@@ -1,59 +1,59 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="登录或以访客身份探索纽约与阿拉斯加像素地景。">
-<title>登录 · 像素地景</title>
+<meta name="description" content="Sign in or continue as a guest to explore New York and Alaska in Pixel Atlas.">
+<title>Sign in | Pixel Atlas</title>
 <link rel="stylesheet" href="./entry.css">
 <script type="module" src="./auth.js"></script>
 </head>
 <body>
 <main class="entry">
- <section class="hero" aria-label="阿拉斯加夜航插画">
+ <section class="hero" aria-label="Illustration of a night flight over Alaska">
   <div class="brand"><span class="mark" aria-hidden="true"></span><span>PIXEL ATLAS</span></div>
   <div class="flight-frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div class="hero-caption">
    <span class="coordinates">63°04′ N <span aria-hidden="true">·</span> 151°00′ W</span>
-   <h1>纽约与<br>阿拉斯加</h1>
-   <p>在城市灯火和极光之间，探索两处像素地景。</p>
+   <h1>New York &amp;<br>Alaska</h1>
+   <p>From city lights to the northern lights.</p>
   </div>
  </section>
  <div class="entry-side">
  <div class="panel">
   <header>
-   <p class="section-label">像素地景 / 账户入口</p>
-   <h2>进入像素地景</h2>
+   <p class="section-label">Your account</p>
+   <h2>Enter Pixel Atlas</h2>
   </header>
-  <section id="auth" aria-label="账户">
-   <div class="choices" role="group" aria-label="账户操作">
-    <button type="button" data-mode="login" aria-pressed="true">登录</button>
-    <button type="button" data-mode="register" aria-pressed="false">注册</button>
+  <section id="auth" aria-label="Account">
+   <div class="choices" role="group" aria-label="Sign-in or registration">
+    <button type="button" data-mode="login" aria-pressed="true">Sign in</button>
+    <button type="button" data-mode="register" aria-pressed="false">Create account</button>
    </div>
-   <div class="choices methods" role="group" aria-label="验证方式">
-    <button type="button" data-method="email" aria-pressed="true">邮箱</button>
-    <button type="button" data-method="phone" aria-pressed="false">手机号</button>
+   <div class="choices methods" role="group" aria-label="Verification method">
+    <button type="button" data-method="email" aria-pressed="true">Email</button>
+    <button type="button" data-method="phone" aria-pressed="false">Phone</button>
    </div>
    <form id="request-code">
-    <label for="identity" id="identity-label">邮箱</label>
+    <label for="identity" id="identity-label">Email</label>
     <input id="identity" type="email" autocomplete="email" placeholder="name@example.com" required disabled>
-    <button id="send" type="submit" class="primary" disabled>发送验证码</button>
+    <button id="send" type="submit" class="primary" disabled>Send code</button>
    </form>
    <form id="verify-code" hidden>
-    <label for="code">验证码</label>
+    <label for="code">Verification code</label>
     <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" maxlength="8" required>
-    <button id="confirm" type="submit" class="primary">验证并进入</button>
-    <button type="button" id="change">返回重填</button>
+    <button id="confirm" type="submit" class="primary">Verify and continue</button>
+    <button type="button" id="change">Change email or phone</button>
    </form>
   </section>
-  <section id="signed-in" aria-label="已登录账户" hidden>
-   <p>你已登录。</p>
-   <a class="primary" href="./scene.html">进入像素地景</a>
-   <button type="button" id="logout">退出登录</button>
+  <section id="signed-in" aria-label="Signed-in account" hidden>
+   <p>You’re signed in.</p>
+   <a class="primary" href="./scene.html">Enter Pixel Atlas</a>
+   <button type="button" id="logout">Sign out</button>
   </section>
-  <p id="status" role="status">账户服务暂未连接，可先以访客身份体验。</p>
+  <p id="status" role="status">Account sign-in is currently unavailable. You can still continue as a guest.</p>
   <div class="guest-area">
-   <a id="guest" class="guest" href="./scene.html">以访客身份进入 <span lang="en">Guest</span></a>
+   <a id="guest" class="guest" href="./scene.html">Continue as a guest</a>
   </div>
  </div>
  </div>

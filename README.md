@@ -1,18 +1,18 @@
 # Pixel Shader Switches
 
-- [像素着色器开关](https://bhu103-data.github.io/pixel-shader-switches/)
-- [纽约与阿拉斯加 · 像素地景](https://bhu103-data.github.io/pixel-shader-switches/usa/)
+- [Original pixel shader switches](https://bhu103-data.github.io/pixel-shader-switches/)
+- [Pixel Atlas for New York and Alaska](https://bhu103-data.github.io/pixel-shader-switches/usa/)
 
-## 美国版
+## Pixel Atlas
 
-`usa/index.html` 是账户和访客入口，`usa/scene.html` 是全屏地景。选择「以访客身份进入」即可浏览。纽约有 7 号线、自由女神像和元素怪兽，阿拉斯加有驼鹿、棕熊、极光及飘雪。两处河流都能看到小鱼跃出水面。
+Open `usa/index.html` to sign in or continue as a guest. `usa/scene.html` contains the fullscreen panoramas. Explore the No. 7 train, the Statue of Liberty, and the Elementals in New York, then switch to Alaska for wildlife, the northern lights, and snowfall. Fish leap from the water in both scenes.
 
-这是静态网站，无需安装依赖或构建。在仓库根目录运行 `python3 -m http.server 8000`，再访问 `http://localhost:8000/usa/`。GitHub Pages 从默认分支根目录部署时会直接提供 `/usa/`。
+The site has no build step. From the repository root, run `python3 -m http.server 8000` and open `http://localhost:8000/usa/`. GitHub Pages serves the atlas at `/usa/` when it publishes from the default branch root.
 
-### 启用邮箱与短信验证码
+### Email and SMS verification
 
-账户入口使用 Supabase Auth。启用前，访客入口可正常使用。
+Supabase Auth powers the optional accounts. Guest access works without Supabase.
 
-1. 在 `usa/auth-config.js` 中填写 Supabase 项目 URL 和浏览器可用的 publishable key（`sb_publishable_...`）。私钥留在认证服务后台。
-2. 在 Supabase Auth 启用 Email 和 Phone。邮件模板使用 `{{ .Token }}` 发验证码，手机号验证需要配置短信提供商。上线前配置邮件发送服务和正式站点 URL，并实测实际投递。
-3. 用邮箱和手机号分别验证注册和已有账户登录。注册允许创建账户，登录仅允许已有账户，进入后可通过右上角「账户」退出。
+1. Add your Supabase project URL and browser-safe publishable key (`sb_publishable_...`) to `usa/auth-config.js`. Keep private keys in your authentication service.
+2. Enable the Email and Phone providers in Supabase Auth. Use `{{ .Token }}` in the email template to deliver a verification code. Set up an SMS provider for phone verification. Configure the production site URL and email sender, then test delivery.
+3. Verify registration and sign-in with both email and phone. Registration can create an account. Sign-in only works with an existing account. Use **Account** in the scene to open the sign-out screen.

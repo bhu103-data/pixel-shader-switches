@@ -1,7 +1,7 @@
-:root{color-scheme:dark;--black:#071113;--panel:#101c1d;--ink:#f1ead9;--muted:#b3c3bc;--cyan:#79dfcc;--metal:#b99562;--edge:#b995625b;--mono:ui-monospace,SFMono-Regular,Consolas,monospace;--serif:"Songti SC","Noto Serif CJK SC","SimSun",Georgia,serif}
+:root{color-scheme:dark;--black:#071113;--panel:#101c1d;--ink:#f1ead9;--muted:#b3c3bc;--cyan:#79dfcc;--metal:#b99562;--edge:#b995625b;--mono:ui-monospace,SFMono-Regular,Consolas,monospace;--serif:Georgia,"Times New Roman",serif}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--black);color:var(--ink);font:1rem/1.55 system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+body{margin:0;background:var(--black);color:var(--ink);font:1rem/1.55 system-ui,sans-serif}
 .entry{display:grid;grid-template-columns:minmax(0,1.46fr) minmax(400px,1fr);min-height:100svh}
 .hero{position:relative;isolation:isolate;display:flex;align-items:end;min-height:650px;overflow:hidden;background:#102c35 url("./cockpit.webp") 54% 50%/cover no-repeat}
 .hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#06121330,transparent 70%),linear-gradient(180deg,#061113a8 0%,transparent 36%,#0711130d 50%,#061011ed 100%)}
@@ -16,7 +16,7 @@ body{margin:0;background:var(--black);color:var(--ink);font:1rem/1.55 system-ui,
 .flight-frame span:nth-child(4){bottom:-1px;left:0;border-width:0 0 1px 1px}
 .hero-caption{margin:0 clamp(31px,6.1vw,91px) clamp(51px,7vw,104px);max-width:540px;text-shadow:0 2px 16px #03080a}
 .coordinates{display:inline-block;padding:5px 9px;color:#bbf3e7;border:1px solid #a9f1e68a;background:#0c242bdc;font:500 .82rem var(--mono);letter-spacing:.07em}
-h1{font:700 clamp(3.1rem,6.7vw,7rem)/.98 var(--serif);letter-spacing:.035em;margin:.78rem 0 1rem;color:#f3eddd}
+h1{font:700 clamp(2.65rem,5.9vw,6.3rem)/.98 var(--serif);letter-spacing:.035em;margin:.78rem 0 1rem;color:#f3eddd}
 .hero-caption p{margin:0;color:#e0e6db}
 .entry-side{display:grid;place-items:center;padding:clamp(24px,5vw,66px);background:radial-gradient(ellipse at 100% 5%,#264842 0%,transparent 57%),radial-gradient(ellipse at 0 100%,#1e3b39 0%,transparent 56%),var(--black);border-left:1px solid #b4c7ae40}
 .panel{width:min(100%,435px);position:relative;padding:clamp(23px,3.1vw,42px);border:1px solid var(--edge);background:linear-gradient(152deg,#1d2c29,#111c1d 53%);box-shadow:0 22px 56px #030a0aa6}
@@ -48,7 +48,6 @@ input::placeholder{color:#abbdb4}
 .guest-area:has(a[hidden]){display:none}
 .guest{background:transparent;border-color:#bb9d6f9c;font-weight:650;display:flex;justify-content:center;align-items:center;gap:8px}
 .guest:hover{background:#d5a76c20;border-color:#e9c893}
-.guest span{font:500 .82rem var(--mono);color:#e6c18a}
 :focus-visible{outline:2px solid #d3f4a2;outline-offset:3px}
 @media(max-width:900px){.entry{grid-template-columns:minmax(0,1fr) minmax(365px,1fr)}.entry-side{padding:24px}.panel{padding:23px}}
 @media(max-width:700px){.entry{display:block}.hero{min-height:clamp(285px,53svh,510px);background-position:54% 46%}.brand{top:19px;left:22px}.mark{width:21px;height:21px}.flight-frame{inset:62px 15px 18px}.hero-caption{margin:0 25px 33px}h1{font-size:clamp(2.05rem,9vw,3.25rem);line-height:1.03;margin:.55rem 0}.hero-caption p{font-size:.9rem}.entry-side{border-left:none;border-top:1px solid #b4c7ae40;padding:22px 16px 30px}.panel{width:min(100%,445px)}}

@@ -46,7 +46,7 @@ auth.addEventListener('click',event=>{
   identity.type=method==='email'?'email':'tel';
   identity.autocomplete=method==='email'?'email':'tel';
   identity.placeholder=method==='email'?'name@example.com':'+1 212 555 0123';
-  $('identity-label').textContent=method==='email'?'邮箱':'手机号（含国家区号）';
+  $('identity-label').textContent=method==='email'?'Email address':'Phone number with country code';
   auth.querySelectorAll('[data-mode],[data-method]').forEach(button=>{
     const selected=button.dataset.mode===mode || button.dataset.method===method;
     button.setAttribute('aria-pressed',String(selected));
@@ -59,7 +59,7 @@ requestForm.addEventListener('submit',async event=>{
   const emailMode=method==='email';
   const address=emailMode?identity.value.trim():identity.value.replace(/[\s()-]/g,'');
   if(!emailMode && !/^\+[1-9]\d{7,14}$/.test(address)){
-    message('请输入带国家区号的手机号，例如 +12125550123。');
+    message('Enter a phone number with its country code, for example +12125550123.');
     identity.focus();
     return;
   }
@@ -74,10 +74,10 @@ requestForm.addEventListener('submit',async event=>{
     challenge={method,address};
     requestForm.hidden=true;
     verifyForm.hidden=false;
-    message(emailMode?'请查看邮件并输入验证码。':'请查看短信并输入验证码。');
+    message(emailMode?'Check your email for the verification code.':'Check your text messages for the verification code.');
     code.focus();
   }catch{
-    message('暂时无法发送验证码。请核对信息、稍后重试，或以访客身份进入。');
+    message('We couldn’t send a code. Check your details, try again later, or continue as a guest.');
   }finally{
     setBusy(false);
   }
@@ -96,7 +96,7 @@ verifyForm.addEventListener('submit',async event=>{
     if(error || !data.session) throw error || new Error('Missing session');
     location.assign(new URL('./scene.html',location.href));
   }catch{
-    message('验证码无效或已过期。请检查后重试，或返回重新获取。');
+    message('That code is invalid or has expired. Try again or request a new code.');
     code.focus();
   }finally{
     setBusy(false);
@@ -115,9 +115,9 @@ $('logout').addEventListener('click',async()=>{
     if(error) throw error;
     resetChallenge();
     showSession(null);
-    message('已退出登录。');
+    message('You’re signed out.');
   }catch{
-    message('暂时无法退出，请稍后重试。');
+    message('We couldn’t sign you out. Try again in a moment.');
   }finally{
     $('logout').disabled=false;
   }
@@ -125,7 +125,7 @@ $('logout').addEventListener('click',async()=>{
 async function connect(){
   if(!/^https:\/\/[a-z\d-]+\.supabase\.co\/?$/i.test(supabaseUrl)
     || !supabasePublishableKey.startsWith('sb_publishable_')) return;
-  message('正在连接账户服务…');
+  message('Connecting to the account service…');
   try{
     const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
     provider=createClient(supabaseUrl,supabasePublishableKey);
@@ -137,7 +137,7 @@ async function connect(){
     message('');
   }catch{
     provider=undefined;
-    message('账户服务暂时无法连接，可先以访客身份体验。');
+    message('Account sign-in is currently unavailable. You can still continue as a guest.');
   }
 }
 connect();

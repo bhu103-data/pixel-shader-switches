@@ -639,10 +639,10 @@ function cityWarning(time){
 }
 
 const chapters=[
-  {label:'公园 · 土元素',begin:23,end:139,x:62,y:84,color:'#bd9567',draw:earthElement,ground:107,reveal:26},
-  {label:'时代广场 · 火元素',begin:113,end:241,x:132,y:78,color:'#f87951',draw:fireElement,ground:100,reveal:12},
-  {label:'中城上空 · 风元素',begin:215,end:343,x:193,y:72,color:'#b7cde0',draw:windElement,ground:91,reveal:18},
-  {label:'东河 · 水元素',begin:317,end:475,x:265,y:87,color:'#5ebedb',draw:waterElement,ground:110,reveal:28}
+  {label:'Central Park · Earth Elemental',begin:23,end:139,x:62,y:84,color:'#bd9567',draw:earthElement,ground:107,reveal:26},
+  {label:'Times Square · Fire Elemental',begin:113,end:241,x:132,y:78,color:'#f87951',draw:fireElement,ground:100,reveal:12},
+  {label:'Midtown skyline · Air Elemental',begin:215,end:343,x:193,y:72,color:'#b7cde0',draw:windElement,ground:91,reveal:18},
+  {label:'East River · Water Elemental',begin:317,end:475,x:265,y:87,color:'#5ebedb',draw:waterElement,ground:110,reveal:28}
 ];
 
 function earthElement(time){
@@ -853,8 +853,8 @@ function trainPosition(time){
 
 function warningLabel(time,chapter){
   if(chapter) return chapter.label;
-  if(time>=.8 && time<3) return '7 号线前方 · 异常信号';
-  if(time>=18 && time<21) return '神秘客 · 投影衰减';
+  if(time>=.8 && time<3) return 'No. 7 train · Unusual signal ahead';
+  if(time>=18 && time<21) return 'Mysterio · Projection fading';
   return '';
 }
 
@@ -941,7 +941,7 @@ function animate(now){
   frame=requestAnimationFrame(animate);
 }
 function syncAnimation(){
-  motion.textContent=paused?'继续动画':'暂停动画';
+  motion.textContent=paused?'Resume':'Pause';
   motion.setAttribute('aria-pressed',String(paused));
   if(!paused && !document.hidden){
     if(!frame) frame=requestAnimationFrame(animate);
@@ -953,9 +953,8 @@ function syncAnimation(){
 }
 function render(){
   const city=state.region==='ny';
-  $('#landmark').textContent=city?'纽约':'阿拉斯加';
-  $('#english').textContent=city?'NEW YORK':'ALASKA';
-  $('#landscape').setAttribute('aria-label',city?'纽约天际线、自由女神像、布鲁克林大桥、中央公园、时代广场、高架地铁、土火风水四个元素怪兽，以及钢铁蜘蛛侠和神秘客':'阿拉斯加雪山、冰川峡湾、林间木屋、驼鹿与棕熊');
+  $('#landmark').textContent=city?'New York':'Alaska';
+  $('#landscape').setAttribute('aria-label',city?'New York skyline with the Statue of Liberty, Brooklyn Bridge, Central Park, Times Square, an elevated train, four Elementals, Iron Spider, and Mysterio.':'Alaska with snowy peaks, a glacial fjord, a cabin in the woods, a moose, and a brown bear.');
   document.querySelectorAll('[data-region]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.region===state.region)));
   prepare();
   draw();
@@ -975,7 +974,7 @@ function storyTime(){
 function setAutomatic(enabled){
   automatic=enabled;
   cycle.setAttribute('aria-pressed',String(enabled));
-  cycle.textContent=enabled?'自动交替':'手动调节';
+  cycle.textContent=enabled?'Auto cycle':'Manual';
   if(enabled) updateCycle();
   syncAnimation();
 }
@@ -1009,12 +1008,12 @@ fullscreen.addEventListener('click',async()=>{
     if(document.fullscreenElement===stage) await document.exitFullscreen();
     else await stage.requestFullscreen();
   }catch{
-    fullscreen.title='当前浏览器未能开启全屏';
+    fullscreen.title='Fullscreen is unavailable in this browser.';
   }
 });
 document.addEventListener('fullscreenchange',()=>{
   const active=document.fullscreenElement===stage;
-  fullscreen.textContent=active?'退出全屏':'全屏';
+  fullscreen.textContent=active?'Exit fullscreen':'Fullscreen';
   fullscreen.setAttribute('aria-pressed',String(active));
 });
 window.addEventListener('resize',()=>{

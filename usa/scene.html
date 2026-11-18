@@ -1,35 +1,35 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="纽约与阿拉斯加的全屏动态像素全景">
-<title>纽约与阿拉斯加 · 像素地景</title>
+<meta name="description" content="Animated fullscreen pixel panoramas of New York and Alaska.">
+<title>New York &amp; Alaska | Pixel Atlas</title>
 <link rel="stylesheet" href="style.css">
 <script src="atlas.js" defer></script>
 </head>
 <body>
-<main id="stage" aria-label="全屏像素地景">
+<main id="stage" aria-label="Fullscreen pixel panorama">
   <div class="world" role="img" id="landscape">
     <canvas id="twilight" width="640" height="288"></canvas>
     <canvas id="night" width="640" height="288"></canvas>
   </div>
   <div class="top">
-    <nav aria-label="地区">
-      <button data-region="ny" aria-pressed="true">纽约</button>
-      <button data-region="ak" aria-pressed="false">阿拉斯加</button>
+    <nav aria-label="Regions">
+      <button data-region="ny" aria-pressed="true">New York</button>
+      <button data-region="ak" aria-pressed="false">Alaska</button>
     </nav>
-    <div class="top-actions"><a href="./index.html" class="account-link">账户</a><button id="fullscreen" aria-pressed="false">全屏</button></div>
+    <div class="top-actions"><a href="./index.html" class="account-link">Account</a><button id="fullscreen" aria-pressed="false">Fullscreen</button></div>
   </div>
-  <section class="bottom" aria-label="场景控制">
-    <div class="caption"><p id="english">NEW YORK</p><h1 id="landmark">纽约</h1><p id="alert" role="status"></p></div>
+  <section class="bottom" aria-label="Scene controls">
+    <div class="caption"><h1 id="landmark">New York</h1><p id="alert" role="status"></p></div>
     <div class="controls">
-      <label for="light">黄昏 <input id="light" type="range" min="0" max="100" value="25" aria-label="黄昏到夜晚"> 夜晚</label>
-      <label for="season">季节
-        <select id="season"><option value="0">春</option><option value="1">夏</option><option value="2">秋</option><option value="3">冬</option></select>
+      <label for="light">Dusk <input id="light" type="range" min="0" max="100" value="25" aria-label="Dusk to night"> Night</label>
+      <label for="season">Season
+        <select id="season"><option value="0">Spring</option><option value="1">Summer</option><option value="2">Fall</option><option value="3">Winter</option></select>
       </label>
-      <button id="cycle" aria-pressed="true">自动交替</button>
-      <button id="motion" aria-pressed="false">暂停动画</button>
+      <button id="cycle" aria-pressed="true">Auto cycle</button>
+      <button id="motion" aria-pressed="false">Pause</button>
     </div>
   </section>
 </main>
