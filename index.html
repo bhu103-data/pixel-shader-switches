@@ -1,0 +1,3511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Tactile Pixel &amp; Light Shader Switches</title>
+<style>
+  :root {
+    --stage-bg: #eef0f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #e9e9e9;
+    display: flex; align-items: center; justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+    user-select: none; -webkit-user-select: none;
+  }
+
+  /* 16:9 Stage */
+  #stage {
+    position: relative;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    background: var(--stage-bg);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.12);
+    transition: background-color 0.06s linear;
+  }
+
+  /* Subtle floating mode selector (auto-dims, press H to toggle completely) */
+  #navBar {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 40; display: flex; gap: 6px; padding: 4px;
+    background: rgba(20, 22, 32, 0.72); backdrop-filter: blur(8px);
+    border-radius: 999px; border: 1px solid rgba(255,255,255,0.14);
+    opacity: 0.35; transition: opacity 0.25s ease;
+  }
+  #navBar:hover { opacity: 1; }
+  #navBar.hidden { display: none; }
+  .nav-pill {
+    border: none; background: transparent; color: rgba(255,255,255,0.78);
+    font-size: 12px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
+    transition: all 0.2s ease; white-space: nowrap;
+  }
+  .nav-pill:hover { color: #fff; background: rgba(255,255,255,0.12); }
+  .nav-pill.active { background: #fff; color: #161822; font-weight: 600; }
+
+  .scene-panel {
+    position: absolute; inset: 0;
+    display: none; align-items: center; justify-content: center;
+  }
+  .scene-panel.active { display: flex; }
+
+  /* Scene 1: Lujiazui Focus Switch (60% stage width, aspect 1.6439) */
+  #lujiazuiWrap {
+    position: relative;
+    width: 60%;
+    aspect-ratio: 1.6439;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #lujiazuiGL, #lujiazui2D {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  }
+  #lujiazui2D { display: none; }
+  #lujiazuiBtn {
+    position: absolute;
+    width: 85.4%; height: 75.76%;
+    border: none; background: transparent; cursor: grab;
+    border-radius: 999px; z-index: 10; outline: none;
+    touch-action: none;
+  }
+  #lujiazuiBtn:active { cursor: grabbing; }
+  #lujiazuiBtn:focus-visible { box-shadow: 0 0 0 3px rgba(239, 160, 44, 0.65); }
+
+  /* Scene 2: Beijing Four Seasons Scroll Switch (84% stage width, aspect 3.2) */
+  #beijingWrap {
+    position: relative;
+    width: 84%;
+    aspect-ratio: 3.2;
+    display: flex; align-items: center; justify-content: center;
+  }
+  @media (max-width: 700px) {
+    #beijingWrap { width: 96%; }
+  }
+  #beijingGL, #beijing2D {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  }
+  #beijing2D { display: none; }
+  #sealCanvas {
+    position: absolute;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    pointer-events: none;
+    z-index: 2;
+  }
+  #beijingSlider {
+    position: absolute;
+    width: 90%; height: 72%;
+    border-radius: 999px;
+    cursor: grab; z-index: 10; outline: none;
+    touch-action: none;
+  }
+  #beijingSlider:active { cursor: grabbing; }
+  #beijingSlider:focus-visible { box-shadow: 0 0 0 3px rgba(168, 50, 45, 0.65); }
+
+  /* Scene 3: Light & Dark Switch (440x280 container) */
+  #lightDarkWrap {
+    position: relative;
+    width: 440px; height: 280px;
+    max-width: 95%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #ldCanvas {
+    width: 440px; height: 280px; display: block;
+  }
+  #ldBtn {
+    position: absolute;
+    left: 60px; top: 58px; width: 320px; height: 164px;
+    border-radius: 58px; border: none; background: transparent;
+    cursor: pointer; z-index: 10; outline: none;
+    touch-action: none;
+  }
+  #ldBtn:focus-visible { box-shadow: 0 0 0 3px rgba(142, 155, 255, 0.7); }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0,0,0,0); white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="navBar" title="按 H 键可隐藏切换栏">
+    <button class="nav-pill active" data-tab="lujiazui">01 · 陆家嘴专注开关</button>
+    <button class="nav-pill" data-tab="beijing">02 · 北京四季卷轴</button>
+    <button class="nav-pill" data-tab="lightdark">03 · 光明与黑暗</button>
+    <button class="nav-pill" id="hideNavBtn" title="隐藏顶部栏">✕</button>
+  </div>
+
+  <!-- 1. Lujiazui 52F Focus Switch -->
+  <div id="panel-lujiazui" class="scene-panel active">
+    <div id="lujiazuiWrap">
+      <canvas id="lujiazuiGL"></canvas>
+      <canvas id="lujiazui2D"></canvas>
+      <button id="lujiazuiBtn" role="switch" aria-checked="false" aria-label="专注模式"></button>
+    </div>
+  </div>
+
+  <!-- 2. Beijing Four Seasons Scroll Switch -->
+  <div id="panel-beijing" class="scene-panel">
+    <div id="beijingWrap">
+      <canvas id="sealCanvas"></canvas>
+      <canvas id="beijingGL"></canvas>
+      <canvas id="beijing2D"></canvas>
+      <div id="beijingSlider" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" aria-valuetext="春 · 长城 · 清晨" aria-label="北京四季卷轴"></div>
+    </div>
+  </div>
+
+  <!-- 3. Light & Dark Switch -->
+  <div id="panel-lightdark" class="scene-panel">
+    <div id="lightDarkWrap">
+      <canvas id="ldCanvas" width="440" height="280"></canvas>
+      <button id="ldBtn" role="switch" aria-checked="false" aria-label="浅色模式"></button>
+    </div>
+  </div>
+
+  <div id="liveRegion" class="sr-only" aria-live="polite"></div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const stage = document.getElementById('stage');
+  const liveRegion = document.getElementById('liveRegion');
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let reducedMotion = reducedMotionQuery.matches;
+  reducedMotionQuery.addEventListener('change', e => { reducedMotion = e.matches; });
+
+  function announce(txt) {
+    liveRegion.textContent = '';
+    requestAnimationFrame(() => { liveRegion.textContent = txt; });
+  }
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function smoothstep(e0, e1, x) {
+    const t = clamp((x - e0) / (e1 - e0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+
+  // =========================================================================
+  // OKLab Color Space & Gamut-Clamped Palette Quantization
+  // =========================================================================
+  function srgbToLinear(c) {
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+  function linearToSrgb(c) {
+    c = clamp(c, 0, 1);
+    return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+  }
+  function hexToRgb01(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  }
+  function rgbToOklab(r, g, b) {
+    const lr = srgbToLinear(r), lg = srgbToLinear(g), lb = srgbToLinear(b);
+    const l = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+    const m = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+    const s = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+    const l_ = Math.cbrt(l), m_ = Math.cbrt(m), s_ = Math.cbrt(s);
+    return [
+      0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+      1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+      0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+    ];
+  }
+  function oklabToLinearRgb(L, a, b) {
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+    const l = l_ * l_ * l_, m = m_ * m_ * m_, s = s_ * s_ * s_;
+    return [
+      +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    ];
+  }
+  function oklabGamutSrgb(L, a, b) {
+    let scale = 1.0;
+    let lin = oklabToLinearRgb(L, a, b);
+    while ((lin[0] < -1e-4 || lin[0] > 1.0001 || lin[1] < -1e-4 || lin[1] > 1.0001 || lin[2] < -1e-4 || lin[2] > 1.0001) && scale > 0.01) {
+      scale *= 0.94;
+      lin = oklabToLinearRgb(L, a * scale, b * scale);
+    }
+    return [linearToSrgb(lin[0]), linearToSrgb(lin[1]), linearToSrgb(lin[2])];
+  }
+  function mixOklabHex(hex1, hex2, t) {
+    const c1 = rgbToOklab(...hexToRgb01(hex1));
+    const c2 = rgbToOklab(...hexToRgb01(hex2));
+    const rgb = oklabGamutSrgb(lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t));
+    return `rgb(${Math.round(rgb[0]*255)}, ${Math.round(rgb[1]*255)}, ${Math.round(rgb[2]*255)})`;
+  }
+
+  // 4x4 Bayer Matrix
+  const BAYER4 = new Uint8Array([
+     0,  8,  2, 10,
+    12,  4, 14,  6,
+     3, 11,  1,  9,
+    15,  7, 13,  5
+  ]);
+
+  // =========================================================================
+  // Shared WebGL2 Liquid-Glass Capsule + Light-Field Compositor
+  // =========================================================================
+  const COMP_VS = `#version 300 es
+    layout(location=0) in vec2 aPos;
+    out vec2 vUv;
+    void main() {
+      vUv = aPos * 0.5 + 0.5;
+      gl_Position = vec4(aPos, 0.0, 1.0);
+    }
+  `;
+
+  const COMP_FS = `#version 300 es
+    precision highp float;
+    in vec2 vUv;
+    out vec4 fragColor;
+
+    uniform sampler2D uWorldTex;
+    uniform sampler2D uLightTex;
+    uniform sampler2D uSurfTex; // 48x48 lens surface attachment (Beijing)
+    uniform float uHasSurf;
+
+    uniform vec2 uCompSize;     // CSS/device pixels of component canvas
+    uniform vec2 uCapCenter;    // Center of capsule in canvas pixels
+    uniform vec2 uCapSize;      // Width, Height of capsule in canvas pixels
+    uniform float uShellThick;  // Shell thickness in pixels
+    uniform float uLensX;       // Lens center X in canvas pixels
+    uniform float uLensRad;     // Lens radius in pixels
+    uniform vec2 uLensStretch;  // (sx, sy)
+    uniform float uPress;       // 0..1 pressed state
+    uniform float uDispersion;  // Chromatic dispersion ~0.05
+    uniform float uNight;       // 0..1 darkness
+    uniform vec3 uShellDayCol;
+    uniform vec3 uShellNightCol;
+    uniform vec3 uWarmGlowCol;  // Leak glow outside capsule
+    uniform float uWarmGlowAmt;
+    uniform vec2 uWarmCentroid; // Normalized 0..1 in window
+    uniform float uFlash;       // Lightning flash 0..1
+    uniform float uK;           // Integer pixel scale k
+    uniform vec2 uWinTopLeft;   // Window inner top-left in canvas pixels
+    uniform vec2 uWinSize;      // Window inner width, height in canvas pixels
+    uniform vec2 uPad;          // Overscan padding in world pixels (14,14) or (16,16)
+    uniform vec2 uWorldTexSize; // Full pixel world dimensions (including overscan)
+    uniform float uTime;
+
+    float sdCapsule(vec2 p, vec2 b) {
+      float r = b.y * 0.5;
+      vec2 q = abs(p) - vec2(b.x * 0.5 - r, 0.0);
+      return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+    }
+
+    // B-spline smooth sampling for light field
+    vec4 sampleLightBSpline(vec2 uv) {
+      vec2 res = vec2(textureSize(uLightTex, 0));
+      vec2 p = uv * res - 0.5;
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      vec2 f2 = f * f;
+      vec2 f3 = f2 * f;
+      vec2 w0 = (1.0 - f) * (1.0 - f) * (1.0 - f) / 6.0;
+      vec2 w1 = (3.0 * f3 - 6.0 * f2 + 4.0) / 6.0;
+      vec2 w2 = (-3.0 * f3 + 3.0 * f2 + 3.0 * f + 1.0) / 6.0;
+      vec2 w3 = f3 / 6.0;
+      vec2 s0 = w0 + w1;
+      vec2 s1 = w2 + w3;
+      vec2 t0 = (i - 1.0 + w1 / s0 + 0.5) / res;
+      vec2 t1 = (i + 1.0 + w3 / s1 + 0.5) / res;
+      return (texture(uLightTex, vec2(t0.x, t0.y)) * s0.x + texture(uLightTex, vec2(t1.x, t0.y)) * s1.x) * s0.y +
+             (texture(uLightTex, vec2(t0.x, t1.y)) * s0.x + texture(uLightTex, vec2(t1.x, t1.y)) * s1.x) * s1.y;
+    }
+
+    // Nearest-neighbor integer-scaled pixel world lookup
+    vec3 samplePixelWorld(vec2 winPx) {
+      vec2 worldCoord = floor(winPx / uK) + uPad;
+      vec2 uv = (worldCoord + 0.5) / uWorldTexSize;
+      return texture(uWorldTex, uv).rgb;
+    }
+
+    float hash12(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    void main() {
+      vec2 fragPx = vec2(vUv.x * uCompSize.x, (1.0 - vUv.y) * uCompSize.y);
+      vec2 relCap = fragPx - uCapCenter;
+      float dOuter = sdCapsule(relCap, uCapSize);
+      vec2 innerSize = uCapSize - vec2(uShellThick * 2.0);
+      float dInner = sdCapsule(relCap, innerSize);
+
+      // 1. Exterior background: two soft shadows + warm light leak + lightning
+      vec4 outCol = vec4(0.0);
+      if (dOuter > 0.0) {
+        float shBig = exp(-max(0.0, dOuter - 2.0) * 0.055) * 0.22;
+        float shSmall = exp(-max(0.0, dOuter) * 0.22) * 0.28;
+        float shadowAlpha = clamp(shBig + shSmall, 0.0, 0.55);
+
+        // Warm light leaking out from capsule
+        vec2 winNorm = clamp((fragPx - uWinTopLeft) / uWinSize, 0.0, 1.0);
+        float leakFalloff = exp(-dOuter * 0.032) * uWarmGlowAmt;
+        float centroidBoost = 0.65 + 0.55 * exp(-length(winNorm - uWarmCentroid) * 2.4);
+        vec3 glow = uWarmGlowCol * leakFalloff * centroidBoost * 0.55;
+        glow += vec3(0.85, 0.92, 1.0) * exp(-dOuter * 0.025) * uFlash * 0.65;
+
+        outCol = vec4(glow - vec3(shadowAlpha * 0.35), clamp(shadowAlpha + length(glow) * 0.6, 0.0, 1.0));
+      }
+
+      // 2. Polished Rounded Thick Outer Shell
+      if (dOuter <= 0.0 && dInner > 0.0) {
+        float t = clamp(-dOuter / uShellThick, 0.0, 1.0); // 0 at outer edge, 1 at inner window edge
+        // Approximate outward capsule normal
+        float eps = 1.5;
+        vec2 grad = normalize(vec2(
+          sdCapsule(relCap + vec2(eps, 0.0), uCapSize) - sdCapsule(relCap - vec2(eps, 0.0), uCapSize),
+          sdCapsule(relCap + vec2(0.0, eps), uCapSize) - sdCapsule(relCap - vec2(0.0, eps), uCapSize)
+        ) + 1e-5);
+
+        // Curved normal across shell thickness
+        float bend = (t - 0.48) * 2.1;
+        vec3 n = normalize(vec3(grad * bend, sqrt(max(0.05, 1.0 - clamp(bend * bend, 0.0, 0.92)))));
+        vec3 viewDir = vec3(0.0, 0.0, 1.0);
+        float fresnel = pow(1.0 - max(dot(n, viewDir), 0.0), 2.6);
+
+        // Studio reflection: large softbox top-left, subtle fill bottom
+        vec3 refl = reflect(-viewDir, n);
+        float topLeftSoftbox = smoothstep(0.15, 0.85, dot(refl, normalize(vec3(-0.62, -0.68, 0.38))));
+        float bottomFill = smoothstep(0.25, 0.9, dot(refl, normalize(vec3(0.0, 0.88, 0.45))));
+
+        vec3 baseShell = mix(uShellDayCol, uShellNightCol, uNight);
+        // Darken inner side for recessed window bezel feel
+        float innerRecess = smoothstep(0.68, 1.0, t);
+        baseShell *= (1.0 - innerRecess * 0.34);
+
+        // Warm lamp/lantern bounce onto shell
+        vec2 shellWinUv = clamp((fragPx - uWinTopLeft) / uWinSize, 0.0, 1.0);
+        float lampProx = exp(-length(shellWinUv - uWarmCentroid) * 2.8) * uWarmGlowAmt;
+        baseShell += uWarmGlowCol * lampProx * 0.24;
+
+        vec3 shellCol = baseShell;
+        shellCol += vec3(1.0, 0.99, 0.97) * topLeftSoftbox * (0.28 + fresnel * 0.42);
+        shellCol += vec3(0.85, 0.88, 0.95) * bottomFill * (0.08 + fresnel * 0.14);
+        shellCol += vec3(0.95, 0.97, 1.0) * uFlash * 0.35;
+
+        // Anti-aliased outer edge
+        float edgeAA = smoothstep(0.0, -1.2, dOuter);
+        outCol = mix(outCol, vec4(clamp(shellCol, 0.0, 1.0), 1.0), edgeAA);
+      }
+
+      // 3. Recessed Window & Liquid-Glass Lens
+      if (dInner <= 0.0) {
+        vec2 winPx = fragPx - uWinTopLeft;
+        vec2 winUv = winPx / uWinSize;
+
+        // Base pixel world inside window
+        vec3 worldCol = samplePixelWorld(winPx);
+        vec3 lightGlow = sampleLightBSpline(winUv).rgb;
+        // Screen blend light field
+        worldCol = 1.0 - (1.0 - worldCol) * (1.0 - lightGlow * 0.62);
+
+        // Recessed window top inner shadow, perimeter dark rim, and faint diagonal glass highlight
+        float rimShadow = exp(dInner * 0.22) * 0.34;
+        float topDrop = smoothstep(26.0, 0.0, winPx.y) * 0.24;
+        float diagGlint = smoothstep(0.38, 0.52, (winUv.x * 0.65 + (1.0 - winUv.y) * 0.35)) *
+                          (1.0 - smoothstep(0.52, 0.68, (winUv.x * 0.65 + (1.0 - winUv.y) * 0.35)));
+        worldCol *= (1.0 - rimShadow - topDrop);
+        worldCol += vec3(1.0) * diagGlint * 0.055;
+
+        // Liquid-Glass Lens evaluation
+        vec2 lensCenter = vec2(uLensX, uCapCenter.y);
+        vec2 pLens = (fragPx - lensCenter) / uLensStretch;
+        float r = length(pLens) / uLensRad;
+
+        // Cast shadow from lens onto pixel world below/right
+        vec2 shadowOffset = vec2(3.5 + uPress * 3.5, 6.0 + uPress * 5.0);
+        float rShad = length((fragPx - (lensCenter + shadowOffset)) / uLensStretch) / uLensRad;
+        float lensCastShadow = (1.0 - smoothstep(0.84, 1.14, rShad)) * (0.28 + uPress * 0.16);
+        worldCol *= (1.0 - lensCastShadow);
+
+        if (r <= 1.0) {
+          // Flat center (0..0.70) magnifying 1.24x; outer 30% (0.70..1.0) bends rapidly to compress outside world
+          float magCenter = 1.0 / 1.24;
+          float outerT = clamp((r - 0.70) / 0.30, 0.0, 1.0);
+          float bendCurve = outerT * outerT * (3.0 - 2.0 * outerT);
+          float radialScale = mix(magCenter, 1.38, bendCurve);
+
+          vec2 dir = r > 1e-4 ? pLens / length(pLens) : vec2(0.0);
+          float disp = uDispersion * bendCurve;
+
+          vec2 samplePtR = (lensCenter + pLens * radialScale * (1.0 + disp)) - uWinTopLeft;
+          vec2 samplePtG = (lensCenter + pLens * radialScale) - uWinTopLeft;
+          vec2 samplePtB = (lensCenter + pLens * radialScale * (1.0 - disp)) - uWinTopLeft;
+
+          vec3 refrCol;
+          refrCol.r = samplePixelWorld(samplePtR).r;
+          refrCol.g = samplePixelWorld(samplePtG).g;
+          refrCol.b = samplePixelWorld(samplePtB).b;
+
+          // Screen-blend light field inside lens
+          vec2 refrUv = clamp(samplePtG / uWinSize, 0.0, 1.0);
+          vec3 refrLight = sampleLightBSpline(refrUv).rgb;
+          refrCol = 1.0 - (1.0 - refrCol) * (1.0 - refrLight * 0.68);
+
+          // Overlay crisp 48x48 pixel surface attachment (no refraction)
+          if (uHasSurf > 0.5) {
+            vec2 surfTexel = floor((pLens / uLensRad * 0.5 + 0.5) * 48.0);
+            if (surfTexel.x >= 0.0 && surfTexel.x < 48.0 && surfTexel.y >= 0.0 && surfTexel.y < 48.0) {
+              vec4 surfSample = texture(uSurfTex, (surfTexel + 0.5) / 48.0);
+              refrCol = mix(refrCol, surfSample.rgb, surfSample.a);
+            }
+          }
+
+          // Caustic light concentration along lower inner rim
+          float lowerRim = smoothstep(0.68, 0.93, r) * (1.0 - smoothstep(0.93, 1.0, r)) * smoothstep(0.15, 0.95, dir.y);
+          refrCol += mix(vec3(1.0, 0.96, 0.88), uWarmGlowCol + 0.35, uWarmGlowAmt) * lowerRim * 0.42;
+
+          // Soft specular reflection at top of lens
+          vec2 specCenter = vec2(-0.18, -0.46);
+          float topSpec = exp(-dot((pLens / uLensRad - specCenter) * vec2(1.1, 2.2), (pLens / uLensRad - specCenter) * vec2(1.1, 2.2)) * 7.5);
+          refrCol += vec3(1.0) * topSpec * 0.34;
+
+          // Darkened thickness rim (no bright outline)
+          float edgeDarken = smoothstep(0.82, 1.0, r) * 0.46;
+          refrCol *= (1.0 - edgeDarken);
+
+          float lensAA = smoothstep(1.0, 0.985, r);
+          worldCol = mix(worldCol, refrCol, lensAA);
+        }
+
+        float innerAA = smoothstep(0.0, -1.0, dInner);
+        outCol = mix(outCol, vec4(clamp(worldCol, 0.0, 1.0), 1.0), innerAA);
+      }
+
+      // 4. Subtle +-0.75/255 dithering noise to eliminate banding
+      float n = (hash12(fragPx + fract(uTime) * 137.0) - 0.5) * (1.5 / 255.0);
+      outCol.rgb = clamp(outCol.rgb + n, 0.0, 1.0);
+      fragColor = outCol;
+    }
+  `;
+
+  function buildCompositor(canvas) {
+    const gl = canvas.getContext('webgl2', { alpha: true, premultipliedAlpha: false, antialias: false });
+    if (!gl) return null;
+
+    function makeShader(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(s));
+        return null;
+      }
+      return s;
+    }
+    const vs = makeShader(gl.VERTEX_SHADER, COMP_VS);
+    const fs = makeShader(gl.FRAGMENT_SHADER, COMP_FS);
+    if (!vs || !fs) return null;
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+    function createTex(filter) {
+      const t = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    }
+
+    const worldTex = createTex(gl.NEAREST);
+    const lightTex = createTex(gl.LINEAR);
+    const surfTex = createTex(gl.NEAREST);
+
+    const locs = {};
+    [
+      'uWorldTex','uLightTex','uSurfTex','uHasSurf','uCompSize','uCapCenter','uCapSize',
+      'uShellThick','uLensX','uLensRad','uLensStretch','uPress','uDispersion','uNight',
+      'uShellDayCol','uShellNightCol','uWarmGlowCol','uWarmGlowAmt','uWarmCentroid',
+      'uFlash','uK','uWinTopLeft','uWinSize','uPad','uWorldTexSize','uTime'
+    ].forEach(name => { locs[name] = gl.getUniformLocation(prog, name); });
+
+    return { gl, prog, vao, worldTex, lightTex, surfTex, locs };
+  }
+
+  // Light Field 2-pass radius-1 + 2-pass radius-3 * 0.55 box blur
+  function buildLightField(srcGrid, cols, rows, dstRgba) {
+    const len = cols * rows * 3;
+    const tempA = new Float32Array(len);
+    const tempB = new Float32Array(len);
+    const blur1 = new Float32Array(srcGrid);
+    const blur3 = new Float32Array(srcGrid);
+
+    function boxPass(input, output, rad) {
+      // Horizontal
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          let r = 0, g = 0, b = 0, cnt = 0;
+          for (let dx = -rad; dx <= rad; dx++) {
+            const nx = clamp(x + dx, 0, cols - 1);
+            const idx = (y * cols + nx) * 3;
+            r += input[idx]; g += input[idx+1]; b += input[idx+2]; cnt++;
+          }
+          const o = (y * cols + x) * 3;
+          tempA[o] = r / cnt; tempA[o+1] = g / cnt; tempA[o+2] = b / cnt;
+        }
+      }
+      // Vertical
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          let r = 0, g = 0, b = 0, cnt = 0;
+          for (let dy = -rad; dy <= rad; dy++) {
+            const ny = clamp(y + dy, 0, rows - 1);
+            const idx = (ny * cols + x) * 3;
+            r += tempA[idx]; g += tempA[idx+1]; b += tempA[idx+2]; cnt++;
+          }
+          const o = (y * cols + x) * 3;
+          output[o] = r / cnt; output[o+1] = g / cnt; output[o+2] = b / cnt;
+        }
+      }
+    }
+
+    boxPass(blur1, tempB, 1);
+    boxPass(tempB, blur1, 1);
+
+    boxPass(blur3, tempB, 3);
+    boxPass(tempB, blur3, 3);
+
+    for (let i = 0; i < cols * rows; i++) {
+      const s = i * 3, d = i * 4;
+      dstRgba[d + 0] = clamp(Math.round((blur1[s + 0] + blur3[s + 0] * 0.55) * 255), 0, 255);
+      dstRgba[d + 1] = clamp(Math.round((blur1[s + 1] + blur3[s + 1] * 0.55) * 255), 0, 255);
+      dstRgba[d + 2] = clamp(Math.round((blur1[s + 2] + blur3[s + 2] * 0.55) * 255), 0, 255);
+      dstRgba[d + 3] = 255;
+    }
+  }
+
+  // =========================================================================
+  // SCENE 1: SHANGHAI LUJIAZUI 52F FOCUS SWITCH
+  // =========================================================================
+  const LujiazuiApp = (() => {
+    const wrap = document.getElementById('lujiazuiWrap');
+    const glCanvas = document.getElementById('lujiazuiGL');
+    const fbCanvas = document.getElementById('lujiazui2D');
+    const btn = document.getElementById('lujiazuiBtn');
+    const comp = buildCompositor(glCanvas);
+
+    // 22 OKLab quantized palette colors
+    const BASE_COLS = {
+      bg:      { hex: '#eef0f2', L: [0.76, 0.86, 0.94, 0.985] },
+      surface: { hex: '#8c9a62', L: [0.40, 0.52, 0.64, 0.76] },
+      fg:      { hex: '#1b2146', L: [0.17, 0.25, 0.33, 0.44] },
+      muted:   { hex: '#7f97b3', L: [0.50, 0.62, 0.74, 0.86] },
+      accent:  { hex: '#efa02c', L: [0.50, 0.66, 0.80, 0.92] },
+      neon:    { hex: '#e04a8a', L: [0.58, 0.74] }
+    };
+
+    const PAL = []; // 22 [r,g,b] 0..255
+    const IDX = {};
+    let pCounter = 0;
+    for (const [k, def] of Object.entries(BASE_COLS)) {
+      IDX[k] = [];
+      const lab = rgbToOklab(...hexToRgb01(def.hex));
+      for (const targetL of def.L) {
+        const rgb = oklabGamutSrgb(targetL, lab[1], lab[2]);
+        PAL.push([Math.round(rgb[0]*255), Math.round(rgb[1]*255), Math.round(rgb[2]*255)]);
+        IDX[k].push(pCounter++);
+      }
+    }
+
+    // Core 192x112 + 14px overscan on all 4 sides => 220x140
+    const CORE_W = 192, CORE_H = 112, PAD = 14;
+    const FULL_W = CORE_W + PAD * 2;
+    const FULL_H = CORE_H + PAD * 2;
+    const idxBuf = new Uint8Array(FULL_W * FULL_H);
+    const rgbaBuf = new Uint8Array(FULL_W * FULL_H * 4);
+    const emitGrid = new Float32Array(72 * 42 * 3);
+    const lightRgba = new Uint8Array(72 * 42 * 4);
+
+    // Keyframe interpolation (Day=0, Dusk=1, Evening=2, Night=3)
+    const KEYFRAMES = [
+      [0.0, 3], [1.5, 3], [2.0, 3], [2.5, 2], [3.0, 1],
+      [3.6, 0], [10.0, 0], [15.0, 0], [17.0, 1], [18.0, 1],
+      [19.0, 2], [20.3, 3], [24.0, 3]
+    ];
+
+    function getTimeCols(h) {
+      const hr = ((h % 24) + 24) % 24;
+      for (let i = 0; i < KEYFRAMES.length - 1; i++) {
+        const [t0, c0] = KEYFRAMES[i];
+        const [t1, c1] = KEYFRAMES[i + 1];
+        if (hr >= t0 && hr <= t1) {
+          const blend = t1 > t0 ? (hr - t0) / (t1 - t0) : 0;
+          return { c0, c1, blend };
+        }
+      }
+      return { c0: 0, c1: 0, blend: 0 };
+    }
+
+    function ditherCol(colArr4, kf, x, y) {
+      const b = BAYER4[(y & 3) * 4 + (x & 3)] / 16.0;
+      return kf.blend > b ? colArr4[kf.c1] : colArr4[kf.c0];
+    }
+
+    function setPx(cx, cy, colIdx) {
+      const fx = cx + PAD, fy = cy + PAD;
+      if (fx < 0 || fx >= FULL_W || fy < 0 || fy >= FULL_H) return;
+      idxBuf[fy * FULL_W + fx] = colIdx;
+    }
+
+    function fillRect(x0, y0, w, h, colIdx) {
+      for (let y = y0; y < y0 + h; y++) {
+        for (let x = x0; x < x0 + w; x++) setPx(x, y, colIdx);
+      }
+    }
+
+    function fillMatRect(x0, y0, w, h, mat4, kf, variant = 0) {
+      for (let y = y0; y < y0 + h; y++) {
+        for (let x = x0; x < x0 + w; x++) {
+          let c = ditherCol(mat4, kf, x, y);
+          if (variant === -1) c = shiftShade(c, -1);
+          else if (variant === 1) c = shiftShade(c, 1);
+          else if (variant === 2) c = IDX.accent[2];
+          setPx(x, y, c);
+        }
+      }
+    }
+
+    function shiftShade(colIdx, delta) {
+      for (const arr of Object.values(IDX)) {
+        const pos = arr.indexOf(colIdx);
+        if (pos !== -1) return arr[clamp(pos + delta, 0, arr.length - 1)];
+      }
+      return colIdx;
+    }
+
+    function addLight(cx, cy, r, g, b, weight) {
+      const gx = clamp(Math.floor(((cx + PAD) / FULL_W) * 72), 0, 71);
+      const gy = clamp(Math.floor(((cy + PAD) / FULL_H) * 42), 0, 41);
+      const o = (gy * 72 + gx) * 3;
+      emitGrid[o] += r * weight;
+      emitGrid[o + 1] += g * weight;
+      emitGrid[o + 2] += b * weight;
+    }
+
+    // 11x11 Pixel Glyphs for "下" and "班"
+    const GLYPH_XIA = [
+      '###########',
+      '.....#.....',
+      '.....#.....',
+      '.....#.....',
+      '.....###...',
+      '.....#..#..',
+      '.....#...#.',
+      '.....#.....',
+      '.....#.....',
+      '.....#.....',
+      '.....#.....'
+    ];
+    const GLYPH_BAN = [
+      '####.#.####',
+      '.#...#..#..',
+      '.#..#.#.#..',
+      '###.#.#.###',
+      '.#..#.#.#..',
+      '.#...#..#..',
+      '####.#.####',
+      '.#...#..#..',
+      '.#..#.#.#..',
+      '###.#.#.###',
+      '....#......'
+    ];
+
+    // Interactive & Story State
+    let x = 0; // 0 = Can Disturb, 1 = Focus
+    let v = 0;
+    let targetX = 0;
+    let dragging = false;
+    let pointerStartX = 0;
+    let dragStartVal = 0;
+    let pressAmt = 0;
+    let stretchS = 0, stretchV = 0;
+    let bounceOffset = 0, bounceVel = 0;
+    let goingBack = false;
+    let leaveFocusClock = 21.5;
+    let focusHoldSec = 0;
+    let simTime = 0;
+    let lastStageLabel = '可以打扰';
+
+    // Particles & Events
+    const bubbles = [];
+    let nextBubbleTimer = 0.6;
+    let backlogCount = 0;
+    let backlogDrainTimer = 0;
+    let phoneFlash = 0;
+    let phoneBadge = false;
+    let taxiPopupTimer = 0;
+    let taxiNumber = '87';
+    let taxiShown87 = false, taxiShown61 = false;
+    let startleTimer = 0;
+    let bossPassTimer = 0;
+    let fastDragCooldown = 0;
+    let blinkTimer = 2.4;
+    let isBlinking = false;
+    const dusts = Array.from({ length: 14 }, (_, i) => ({
+      x: 12 + (i * 19) % 50,
+      y: 16 + (i * 29) % 74,
+      ph: i * 1.7
+    }));
+    const clouds = [
+      { x: 18, y: 14, w: 18, spd: 0.7 },
+      { x: 46, y: 21, w: 14, spd: 0.45 },
+      { x: 6, y: 27, w: 12, spd: 0.6 }
+    ];
+
+    function getClock() {
+      if (!goingBack) {
+        if (x >= 0.995 && !dragging) {
+          return 21.5 + clamp(focusHoldSec / 26.0, 0, 1) * 1.9;
+        }
+        return 12.0 + 9.5 * x;
+      } else {
+        return lerp(36.0, leaveFocusClock, x);
+      }
+    }
+
+    function getStageName(rawH, isReturn) {
+      if (!isReturn) {
+        if (rawH < 14.0) return '可以打扰';
+        if (rawH < 21.5) return '进入专注';
+        return '专注';
+      } else {
+        if (rawH < 25.5) return '结束专注';
+        if (rawH < 31.7) return '休息';
+        return '可以打扰';
+      }
+    }
+
+    function renderWorld(dt) {
+      simTime += dt;
+      if (fastDragCooldown > 0) fastDragCooldown -= dt;
+      if (startleTimer > 0) startleTimer -= dt;
+      if (bossPassTimer > 0) bossPassTimer -= dt;
+      if (phoneFlash > 0) phoneFlash -= dt;
+      if (taxiPopupTimer > 0) taxiPopupTimer -= dt;
+
+      blinkTimer -= dt;
+      if (blinkTimer <= 0) {
+        isBlinking = !isBlinking;
+        blinkTimer = isBlinking ? 0.14 : (2.2 + Math.random() * 2.5);
+      }
+
+      if (!goingBack && x >= 0.995 && !dragging) {
+        focusHoldSec = Math.min(26.0, focusHoldSec + dt);
+      } else if (!goingBack && x < 0.98) {
+        focusHoldSec = 0;
+      }
+
+      const rawH = getClock();
+      const h = rawH % 24;
+      const isReturn = goingBack;
+
+      const stageName = getStageName(rawH, isReturn);
+      if (stageName !== lastStageLabel) {
+        lastStageLabel = stageName;
+        announce(stageName);
+      }
+
+      // Night factor (0..1)
+      const nightAmt = clamp(smoothstep(17.4, 20.2, h) + (1.0 - smoothstep(1.5, 3.6, h)), 0, 1);
+      stage.style.setProperty('--night', nightAmt.toFixed(3));
+      stage.style.backgroundColor = mixOklabHex('#eef0f2', '#1b2146', nightAmt * 0.92);
+
+      const kf = getTimeCols(h);
+      emitGrid.fill(0);
+
+      // Material palettes [Day, Dusk, Evening, Night]
+      const matWall    = [IDX.bg[2], IDX.bg[1], IDX.fg[3], IDX.fg[2]];
+      const matCeiling = [IDX.bg[1], IDX.bg[0], IDX.fg[2], IDX.fg[1]];
+      const matFloor   = [IDX.fg[3], IDX.fg[2], IDX.fg[1], IDX.fg[0]];
+      const matPart    = [IDX.muted[2], IDX.muted[1], IDX.fg[3], IDX.fg[2]];
+      const matDesk    = [IDX.bg[1], IDX.bg[0], IDX.fg[2], IDX.fg[1]];
+
+      const matSky     = [IDX.muted[3], IDX.accent[2], IDX.fg[3], IDX.fg[0]];
+      const matTower   = [IDX.muted[2], IDX.accent[1], IDX.fg[2], IDX.fg[1]];
+      const matRiver   = [IDX.muted[1], IDX.accent[1], IDX.fg[2], IDX.fg[0]];
+      const matPark    = [IDX.surface[1], IDX.surface[0], IDX.fg[1], IDX.fg[0]];
+
+      // 1. Indoor Ceiling, Wall, Baseboard & Perspective Carpet
+      fillMatRect(-PAD, -PAD, FULL_W, 4 + PAD, matCeiling, kf);
+      for (let xw = -PAD; xw < CORE_W + PAD; xw += 8) {
+        fillRect(xw, 0, 1, 4, IDX.fg[1]);
+      }
+      fillMatRect(-PAD, 4, FULL_W, 88, matWall, kf);
+      fillMatRect(-PAD, 92, FULL_W, 4, [IDX.fg[2], IDX.fg[1], IDX.fg[1], IDX.fg[0]], kf);
+
+      // Ceiling LED Strip (y4-6): full on day, right half off after 19:00 until morning
+      const stripRightOn = !(h >= 19.0 || h < 6.5);
+      const stripOn = !(h >= 21.5 || h < 6.0);
+      for (let xw = 8; xw < 184; xw++) {
+        const isRight = xw >= 96;
+        const lit = stripOn && (!isRight || stripRightOn);
+        fillRect(xw, 4, 1, 2, lit ? IDX.bg[3] : IDX.fg[1]);
+        if (lit && (xw % 8 === 0)) addLight(xw, 5, 0.85, 0.90, 1.0, 0.25);
+      }
+
+      // Perspective Carpet Tiles (y >= 96)
+      for (let y = 96; y < CORE_H + PAD; y++) {
+        const rowDepth = y - 96;
+        const tileW = Math.floor(8 + rowDepth * 0.45);
+        for (let xw = -PAD; xw < CORE_W + PAD; xw++) {
+          const check = (Math.floor((xw + 40) / tileW) + Math.floor(rowDepth / 4)) & 1;
+          const baseC = ditherCol(matFloor, kf, xw, y);
+          setPx(xw, y, check ? baseC : shiftShade(baseC, -1));
+        }
+      }
+
+      // 2. Floor-to-Ceiling Window (x10..64, y8..93) + Lujiazui Skyline
+      fillMatRect(10, 8, 55, 86, matSky, kf);
+
+      // Sunrise glow (2.0..3.6)
+      const isSunrise = (h >= 2.0 && h <= 3.6);
+      if (isSunrise) {
+        const sunProg = (h - 2.0) / 1.6;
+        const sunY = Math.round(62 - sunProg * 28);
+        for (let y = 10; y < 68; y++) {
+          for (let xw = 10; xw < 64; xw++) {
+            if (y > 46 && sunProg < 0.5) setPx(xw, y, IDX.neon[1]);
+            else if (y > 38) setPx(xw, y, IDX.accent[2]);
+          }
+        }
+        // Rising Sun behind Trio
+        for (let dy = -4; dy <= 4; dy++) {
+          for (let dx = -4; dx <= 4; dx++) {
+            if (dx*dx + dy*dy <= 16) {
+              setPx(48 + dx, sunY + dy, IDX.accent[3]);
+              addLight(48, sunY, 1.0, 0.72, 0.35, 0.4);
+            }
+          }
+        }
+      }
+
+      // Skylight contribution
+      if (nightAmt < 0.7) {
+        addLight(36, 35, 0.75, 0.86, 1.0, (1.0 - nightAmt) * 1.4);
+      }
+
+      // Oriental Pearl Tower (x18..26, spire y24, upper sphere y36..40, lower sphere y52..56, base y64)
+      const pearlCol = ditherCol(matTower, kf, 22, 40);
+      fillRect(22, 24, 1, 12, pearlCol); // Spire
+      fillRect(21, 41, 3, 11, pearlCol); // Shaft
+      fillRect(20, 57, 5, 8, pearlCol);  // Lower legs
+      fillRect(19, 36, 7, 5, pearlCol);  // Upper sphere
+      fillRect(18, 52, 9, 5, pearlCol);  // Lower sphere
+      if (nightAmt > 0.35) {
+        // Neon magenta illumination on Oriental Pearl Tower
+        fillRect(20, 37, 5, 3, IDX.neon[1]);
+        fillRect(19, 53, 7, 3, IDX.neon[0]);
+        setPx(22, 24, IDX.neon[1]);
+        addLight(22, 42, 0.95, 0.32, 0.62, 0.85 * nightAmt);
+      }
+
+      // Lujiazui "Three-Piece Suit" (SWFC, Jin Mao, Shanghai Tower extending into top overscan!)
+      // Jin Mao Tower (pagoda tiered setback, x32..40, y22..68)
+      for (let y = 22; y < 68; y++) {
+        const tier = Math.floor((y - 22) / 6);
+        const halfW = Math.min(4, 1 + Math.floor(tier * 0.55));
+        const cx = 36;
+        for (let dx = -halfW; dx <= halfW; dx++) {
+          const isSunSide = (dx < 0 && h >= 16.5 && h <= 18.5);
+          setPx(cx + dx, y, isSunSide ? IDX.accent[2] : ditherCol(matTower, kf, cx + dx, y));
+        }
+      }
+      // Shanghai World Financial Center ("bottle opener", x42..50, y14..68)
+      for (let y = 14; y < 68; y++) {
+        const halfW = y < 24 ? 3 : 4;
+        for (let dx = -halfW; dx <= halfW; dx++) {
+          if (y >= 16 && y <= 20 && Math.abs(dx) <= 1) continue; // Trapezoid opening
+          const isSunSide = (dx < 0 && h >= 16.5 && h <= 18.5);
+          setPx(46 + dx, y, isSunSide ? IDX.accent[2] : ditherCol(matTower, kf, 46 + dx, y));
+        }
+      }
+      // Shanghai Tower (tallest twisted spiral profile extending up to y = -8 in top overscan!)
+      for (let y = -8; y < 68; y++) {
+        const progress = (y + 8) / 76;
+        const twist = Math.round(Math.sin(progress * Math.PI * 1.4) * 1.6);
+        const halfW = Math.max(2, Math.round(2 + progress * 3.5));
+        const cx = 56 + twist;
+        for (let dx = -halfW; dx <= halfW; dx++) {
+          const isSunSide = (dx < 0 && h >= 16.5 && h <= 18.5);
+          let c = isSunSide ? IDX.accent[2] : ditherCol(matTower, kf, cx + dx, y);
+          // Sunrise glass reflection flash
+          if (isSunrise && dx === -halfW + 1 && (y % 5 === 0)) c = IDX.bg[3];
+          setPx(cx + dx, y, c);
+        }
+      }
+
+      // Lit Office Windows on Trio at Night (18.6 -> 70%, 21.5 -> 40%, 23.4 -> 8%)
+      if (h >= 18.6 || h < 5.0) {
+        let litRatio = 0.70;
+        if (h >= 21.5) litRatio = lerp(0.40, 0.08, clamp((h - 21.5) / 1.9, 0, 1));
+        else if (h < 5.0) litRatio = 0.12;
+        for (let y = -2; y < 65; y += 2) {
+          for (let xw = 33; xw < 61; xw += 2) {
+            const hash = ((xw * 37 + y * 91) & 255) / 255;
+            const highShanghai = (xw >= 53 && xw <= 59 && y >= -2 && y <= 14 && hash < 0.25);
+            if (hash < litRatio || highShanghai) {
+              const cur = idxBuf[(y + PAD) * FULL_W + (xw + PAD)];
+              if (cur === IDX.fg[1] || cur === IDX.fg[2]) {
+                setPx(xw, y, highShanghai ? IDX.accent[3] : IDX.accent[2]);
+                if (hash < 0.15) addLight(xw, y, 1.0, 0.72, 0.28, 0.22);
+              }
+            }
+          }
+        }
+      }
+
+      // Drifting Clouds at 52F altitude (can pass in front of skyscrapers!)
+      if (!reducedMotion) {
+        for (const cl of clouds) {
+          cl.x += cl.spd * dt;
+          if (cl.x > 68) cl.x = -16;
+          const cx = Math.round(cl.x);
+          const cCol = nightAmt > 0.5 ? IDX.fg[2] : (h >= 16.8 && h <= 18.5 ? IDX.accent[3] : IDX.bg[3]);
+          for (let dx = 0; dx < cl.w; dx++) {
+            const hSpan = dx > 2 && dx < cl.w - 3 ? 2 : 1;
+            for (let dy = 0; dy < hSpan; dy++) {
+              setPx(cx + dx, cl.y + dy, cCol);
+            }
+          }
+        }
+      }
+
+      // Daytime Seagull / Night Blinking Airplane
+      if (nightAmt < 0.3) {
+        const gx = 12 + Math.floor((simTime * 4) % 50);
+        const gy = 18 + Math.round(Math.sin(simTime * 5) * 1.5);
+        setPx(gx, gy, IDX.bg[3]);
+        setPx(gx - 1, gy - 1, IDX.bg[3]);
+        setPx(gx + 1, gy - 1, IDX.bg[3]);
+      } else {
+        const px = 62 - Math.floor((simTime * 2.4) % 52);
+        setPx(px, 12, IDX.fg[3]);
+        if (Math.floor(simTime * 3) % 2 === 0) {
+          setPx(px, 12, IDX.neon[1]);
+          addLight(px, 12, 1.0, 0.2, 0.4, 0.3);
+        }
+      }
+
+      // Bund Historic Silhouette across river (y62..68)
+      for (let xw = 10; xw < 64; xw++) {
+        const bTop = 64 - ((xw * 7) % 3);
+        for (let y = bTop; y < 68; y++) {
+          setPx(xw, y, nightAmt > 0.4 ? IDX.fg[0] : ditherCol(matTower, kf, xw, y));
+        }
+        // Bund amber contour lights (17.5 -> 22.0, turns off left-to-right 22.0..22.3)
+        const bundOn = (h >= 17.5 && h < 22.0) || (h >= 22.0 && h <= 22.3 && ((xw - 10) / 54) > ((h - 22.0) / 0.3));
+        if (bundOn && (xw % 2 === 0)) {
+          setPx(xw, 64, IDX.accent[2]);
+          addLight(xw, 64, 1.0, 0.65, 0.2, 0.25);
+        }
+      }
+
+      // Huangpu River (y68..80) + Cruise Boat LED + First Morning Ferry (5.5)
+      fillMatRect(10, 68, 55, 12, matRiver, kf);
+      if (isSunrise) {
+        for (let y = 69; y < 79; y++) {
+          for (let xw = 22; xw < 54; xw++) {
+            if (((xw + y) & 1) === 0 && BAYER4[(y & 3)*4 + (xw & 3)] < 7) {
+              setPx(xw, y, IDX.accent[3]);
+            }
+          }
+        }
+      }
+      // Cruise boat
+      const boatX = 14 + Math.floor((simTime * 2.2) % 42);
+      fillRect(boatX, 73, 9, 2, IDX.fg[1]);
+      if (h >= 17.5 || h < 5.0) {
+        for (let bx = 0; bx < 7; bx++) {
+          const on = ((bx + Math.floor(simTime * 6)) % 2) === 0;
+          setPx(boatX + 1 + bx, 74, on ? IDX.neon[1] : IDX.accent[2]);
+        }
+        addLight(boatX + 4, 74, 0.95, 0.3, 0.6, 0.45);
+      }
+      // First morning ferry around 5.5
+      if (h >= 5.2 && h <= 6.2) {
+        const ferryX = Math.round(12 + ((h - 5.2) / 1.0) * 44);
+        fillRect(ferryX, 71, 6, 2, IDX.bg[3]);
+        setPx(ferryX - 1, 72, IDX.muted[3]);
+      }
+
+      // Riverside Park & Traffic (y80..93)
+      fillMatRect(10, 80, 55, 14, matPark, kf);
+      fillRect(10, 86, 55, 3, IDX.fg[2]); // Road
+      for (let c = 0; c < 4; c++) {
+        const carX = 11 + ((Math.floor(simTime * (5 + c)) + c * 14) % 52);
+        setPx(carX, 87, nightAmt > 0.4 ? IDX.neon[1] : IDX.bg[3]);
+      }
+
+      // Drone Light Show Easter Egg ("下班" 19.6..21.2)
+      if (h >= 19.6 && h <= 21.2) {
+        const cx0 = 25, cy0 = 15;
+        const cx1 = 39, cy1 = 15;
+        const morph = reducedMotion ? 1.0 : clamp((h - 19.6) / 0.4, 0, 1);
+        const disperse = (!reducedMotion && h > 20.9) ? (h - 20.9) / 0.3 : 0;
+
+        for (let gy = 0; gy < 11; gy++) {
+          for (let gx = 0; gx < 11; gx++) {
+            if (GLYPH_XIA[gy][gx] === '#') {
+              const px = Math.round(lerp(18 + ((gx * 7 + gy * 3) % 34), cx0 + gx + disperse * (gx - 5) * 1.4, morph));
+              const py = Math.round(lerp(56 - ((gx * 5) % 14), cy0 + gy - disperse * 6, morph));
+              setPx(px, py, (gx + gy) % 3 === 0 ? IDX.neon[1] : IDX.bg[3]);
+              addLight(px, py, 0.9, 0.95, 1.0, 0.14);
+            }
+            if (GLYPH_BAN[gy][gx] === '#') {
+              const px = Math.round(lerp(22 + ((gx * 9 + gy * 5) % 34), cx1 + gx + disperse * (gx - 5) * 1.4, morph));
+              const py = Math.round(lerp(58 - ((gy * 4) % 14), cy1 + gy - disperse * 6, morph));
+              setPx(px, py, (gx + gy) % 3 === 0 ? IDX.neon[1] : IDX.bg[3]);
+              addLight(px, py, 0.9, 0.95, 1.0, 0.14);
+            }
+          }
+        }
+      }
+
+      // Smart Electrochromic Frosted Glass (15.2..15.9 rises from y93 up to y44; 7.0..7.7 clears top-down)
+      let frostTopY = 94;
+      if (!isReturn) {
+        if (h >= 15.2) {
+          const p = clamp((h - 15.2) / 0.7, 0, 1);
+          frostTopY = Math.round(lerp(94, 44, p));
+        }
+      } else {
+        if (h < 7.0) frostTopY = 44;
+        else if (h <= 7.7) {
+          const p = clamp((h - 7.0) / 0.7, 0, 1);
+          frostTopY = Math.round(lerp(44, 94, p));
+        }
+      }
+      if (frostTopY < 94) {
+        const isSunsetFrost = (h >= 16.8 && h <= 18.4);
+        for (let y = frostTopY; y <= 93; y++) {
+          for (let xw = 10; xw <= 64; xw++) {
+            const cur = idxBuf[(y + PAD) * FULL_W + (xw + PAD)];
+            const b = BAYER4[(y & 3) * 4 + (xw & 3)];
+            if (b < 11) {
+              setPx(xw, y, isSunsetFrost ? IDX.accent[2] : (nightAmt > 0.5 ? IDX.fg[3] : IDX.bg[2]));
+            } else {
+              setPx(xw, y, shiftShade(cur, 1));
+            }
+          }
+        }
+      }
+
+      // Venetian Blinds (16.0..19.2 lowers; 1.4..3.4 raises; 2 rows slat, 1 row light gap)
+      let blindFrac = 0;
+      if (!isReturn) {
+        blindFrac = clamp((h - 16.0) / 3.2, 0, 1);
+      } else {
+        blindFrac = 1.0 - clamp((h - 1.4) / 2.0, 0, 1);
+      }
+      const blindBotY = Math.round(8 + blindFrac * 85);
+      if (blindBotY > 8) {
+        const slatCol = nightAmt > 0.5 ? IDX.fg[1] : IDX.bg[1];
+        for (let y = 8; y <= blindBotY; y++) {
+          if ((y % 3) !== 0) {
+            for (let xw = 10; xw <= 64; xw++) setPx(xw, y, slatCol);
+          }
+        }
+      }
+
+      // Window Aluminum Mullions (2px dark grey frame, center mullion x37..38) + Floor Heater Grille
+      fillRect(8, 6, 59, 2, IDX.fg[1]);
+      fillRect(8, 93, 59, 2, IDX.fg[1]);
+      fillRect(8, 6, 2, 89, IDX.fg[1]);
+      fillRect(65, 6, 2, 89, IDX.fg[1]);
+      fillRect(37, 8, 2, 85, IDX.fg[1]);
+      fillRect(10, 94, 55, 2, IDX.fg[2]); // Radiator grille
+
+      // Sunlight / Drone Floor Light Strips on Carpet
+      if (nightAmt < 0.35 && blindFrac < 0.85) {
+        const sunSpotCol = frostTopY < 94 ? IDX.bg[3] : IDX.accent[3];
+        for (let y = 96; y < 110; y++) {
+          if (blindFrac > 0.2 && (y % 3 === 0)) continue;
+          const xStart = 12 + (y - 96);
+          for (let xw = xStart; xw < xStart + 36; xw++) {
+            if (frostTopY < 94 && BAYER4[(y & 3)*4 + (xw & 3)] < 6) continue;
+            setPx(xw, y, sunSpotCol);
+          }
+        }
+      } else if (h >= 19.6 && h <= 21.2) {
+        // Cool white light bars from drone show through blinds
+        for (let bar = 0; bar < 3; bar++) {
+          const by = 98 + bar * 4;
+          if (Math.sin(simTime * 7 + bar) > -0.2) {
+            fillRect(18 + bar * 3, by, 26, 1, IDX.bg[3]);
+          }
+        }
+      }
+
+      // 3. Cubicle Partition, KPI Whiteboard, Sticky Notes, Desk & Open Shelving
+      // KPI Whiteboard on wall (x76..92, y24..36)
+      fillRect(76, 24, 17, 13, IDX.bg[3]);
+      fillRect(76, 24, 17, 1, IDX.fg[2]);
+      fillRect(76, 36, 17, 1, IDX.fg[2]);
+      fillRect(78, 27, 8, 1, IDX.neon[0]);
+      fillRect(78, 30, 11, 1, IDX.muted[1]);
+      fillRect(78, 33, 6, 1, IDX.surface[1]);
+
+      // Half-height Fabric Partition (x68..158, top rail y42..43, fabric y44..69)
+      fillRect(68, 42, 91, 2, IDX.muted[3]);
+      fillMatRect(68, 44, 91, 26, matPart, kf);
+
+      // Empty Paper Cups along partition top rail (1 at 12h, 2 at 16h, 3 at 20h, 4 on morning return)
+      let cupCount = 1;
+      if (isReturn && h >= 6.6) cupCount = 4;
+      else if (h >= 20.0 || isReturn) cupCount = 3;
+      else if (h >= 16.0) cupCount = 2;
+      for (let c = 0; c < cupCount; c++) {
+        const cx = 104 + c * 6;
+        fillRect(cx, 39, 3, 3, IDX.bg[3]);
+        fillRect(cx, 39, 3, 1, IDX.accent[2]);
+      }
+
+      // 5 Colored Sticky Notes (x70..90, y48..58), one with upward arrow
+      const noteCols = [IDX.accent[3], IDX.neon[1], IDX.surface[3], IDX.bg[3], IDX.accent[2]];
+      const noteCoords = [[71,48],[76,49],[82,48],[73,54],[80,54]];
+      noteCoords.forEach(([nx, ny], idx) => {
+        fillRect(nx, ny, 4, 4, noteCols[idx]);
+        if (idx === 0) {
+          setPx(nx + 1, ny + 1, IDX.fg[0]);
+          setPx(nx + 1, ny + 2, IDX.fg[0]);
+        }
+      });
+
+      // Desk Surface (y70, x68..157), left leg, right 3-drawer cabinet
+      fillMatRect(68, 70, 90, 2, matDesk, kf);
+      fillRect(69, 72, 2, 23, IDX.fg[2]);
+      fillRect(142, 72, 15, 23, IDX.fg[2]);
+      fillRect(143, 74, 13, 6, IDX.muted[1]);
+      fillRect(143, 81, 13, 6, IDX.muted[1]);
+      fillRect(143, 88, 13, 6, IDX.muted[1]);
+
+      // Under-desk Trash Can with takeout box (x70..78) & PC Tower with blinking LED (x140..150, y80..95)
+      fillRect(71, 86, 7, 9, IDX.fg[2]);
+      fillRect(72, 84, 5, 2, IDX.bg[3]);
+      fillRect(134, 80, 7, 15, IDX.fg[1]);
+      setPx(136, 82, Math.floor(simTime * 4) % 2 === 0 ? IDX.surface[3] : IDX.neon[1]);
+
+      // Desk Lamp (x147, shade y52..55; turns on at 18.4, off at 1.7)
+      const lampOn = (!isReturn && h >= 18.4) || (isReturn && h < 1.7);
+      fillRect(145, 69, 5, 1, IDX.fg[1]);
+      fillRect(147, 56, 1, 13, IDX.fg[2]);
+      fillRect(143, 52, 6, 4, IDX.accent[2]);
+      if (lampOn) {
+        fillRect(143, 55, 6, 1, IDX.accent[3]);
+        addLight(145, 57, 1.0, 0.72, 0.25, 1.65);
+        // Warm lamp wash on desk & partition
+        for (let y = 56; y <= 70; y++) {
+          for (let xw = 132; xw <= 155; xw++) {
+            if (Math.abs(xw - 145) <= (y - 54) * 0.75) {
+              const cur = idxBuf[(y + PAD) * FULL_W + (xw + PAD)];
+              if (cur === IDX.muted[2] || cur === IDX.fg[2] || cur === IDX.fg[3]) {
+                setPx(xw, y, IDX.accent[1]);
+              }
+            }
+          }
+        }
+      }
+
+      // Monitor (x113..136, y47..61) + Badge Lanyard (x135..137, y47..53)
+      fillRect(123, 62, 4, 8, IDX.fg[1]);
+      fillRect(120, 69, 10, 1, IDX.fg[2]);
+      fillRect(112, 46, 26, 16, IDX.fg[0]);
+      const isCodeMode = (!isReturn && h >= 14.7) || (isReturn && h < 7.7);
+      fillRect(113, 47, 24, 14, isCodeMode ? IDX.fg[1] : IDX.bg[3]);
+      addLight(125, 54, isCodeMode ? 0.45 : 0.85, isCodeMode ? 0.72 : 0.90, 1.0, 0.85);
+
+      if (!isCodeMode) {
+        // Chat UI stacking from bottom up
+        for (let row = 0; row < 4; row++) {
+          const my = 58 - row * 3;
+          const isMe = (row % 2 === 0);
+          fillRect(isMe ? 124 : 115, my, 10, 2, isMe ? IDX.surface[2] : IDX.muted[2]);
+        }
+      } else {
+        // Code editor lines + typing cursor
+        const typeSpeed = (!isReturn && h >= 21.5) ? 14 : 8;
+        const charProgress = Math.floor(simTime * typeSpeed);
+        const codeCols = [IDX.accent[3], IDX.surface[3], IDX.neon[1], IDX.muted[3]];
+        for (let ln = 0; ln < 6; ln++) {
+          const ly = 49 + ln * 2;
+          const maxLen = 8 + ((ln * 5) % 10);
+          const curLen = ln === 5 ? (charProgress % maxLen) + 1 : maxLen;
+          fillRect(115, ly, curLen, 1, codeCols[ln % 4]);
+          if (ln === 5 && Math.floor(simTime * 5) % 2 === 0) {
+            setPx(115 + curLen, ly, IDX.bg[3]);
+          }
+        }
+      }
+      // Blue badge lanyard hanging on top-right of monitor
+      fillRect(135, 47, 2, 6, IDX.muted[2]);
+      fillRect(135, 51, 3, 3, IDX.bg[3]);
+
+      // Smartphone (x73), Coffee Mug (x82), Goji Thermos (x88), Noise-Canceling Headphones (x140 when off)
+      fillRect(73, 69, 4, 1, phoneFlash > 0 ? IDX.bg[3] : IDX.fg[0]);
+      if (phoneFlash > 0) addLight(75, 68, 0.75, 0.88, 1.0, 0.7);
+      if (phoneBadge) setPx(76, 68, IDX.neon[1]);
+
+      // Taxi Queue Popup ("87" at 22.4, "61" at 23.0)
+      if (!isReturn && Math.abs(h - 22.4) < 0.06 && !taxiShown87) {
+        taxiShown87 = true; taxiNumber = '87'; taxiPopupTimer = 3.0;
+      } else if (!isReturn && Math.abs(h - 23.0) < 0.06 && !taxiShown61) {
+        taxiShown61 = true; taxiNumber = '61'; taxiPopupTimer = 3.0;
+      }
+      if (h < 22.0) { taxiShown87 = false; taxiShown61 = false; }
+      if (taxiPopupTimer > 0) {
+        fillRect(71, 60, 9, 7, IDX.bg[3]);
+        fillRect(71, 66, 9, 1, IDX.accent[2]);
+        // Draw tiny 2-digit pixel readout
+        setPx(72, 61, IDX.fg[0]); setPx(73, 61, IDX.fg[0]); setPx(74, 61, IDX.fg[0]);
+        setPx(72, 63, IDX.fg[0]); setPx(73, 63, IDX.fg[0]); setPx(74, 63, IDX.fg[0]);
+        setPx(72, 65, IDX.fg[0]); setPx(73, 65, IDX.fg[0]); setPx(74, 65, IDX.fg[0]);
+        setPx(76, 61, IDX.fg[0]); setPx(77, 61, IDX.fg[0]); setPx(78, 61, IDX.fg[0]);
+        setPx(77, 63, IDX.fg[0]); setPx(77, 65, IDX.fg[0]);
+        if (taxiNumber === '61') setPx(76, 64, IDX.fg[0]);
+      }
+
+      // Goji Berry Thermos (x88)
+      fillRect(88, 65, 3, 5, IDX.fg[2]);
+      fillRect(88, 64, 3, 1, IDX.bg[3]);
+      setPx(89, 66, IDX.neon[0]);
+
+      // 4. Open Shelving Unit (x162..190, y32..95)
+      fillRect(162, 32, 1, 64, IDX.fg[2]);
+      fillRect(190, 32, 1, 64, IDX.fg[2]);
+      [32, 48, 64, 80, 95].forEach(sy => fillRect(162, sy, 29, 1, IDX.fg[2]));
+
+      // Top shelf: unfinished lunch takeout bag + Money Tree (发财树) with a few yellow leaves
+      fillRect(166, 26, 6, 6, IDX.accent[2]);
+      fillRect(178, 27, 6, 5, IDX.accent[1]); // Pot
+      fillRect(180, 21, 2, 6, IDX.surface[0]); // Trunk
+      fillRect(176, 17, 10, 5, IDX.surface[2]);
+      setPx(177, 19, IDX.accent[3]); // Yellow leaf
+      setPx(184, 18, IDX.accent[3]); // Yellow leaf
+
+      // Second shelf: Capsule Coffee Machine + Capsule Jar
+      const brewing = (isReturn && h >= 3.8 && h <= 6.6);
+      fillRect(166, 39, 8, 9, IDX.fg[1]);
+      fillRect(168, 41, 4, 2, IDX.muted[3]);
+      const machLed = (brewing && h >= 4.6) ? IDX.surface[3] : IDX.neon[0];
+      setPx(172, 40, machLed);
+      addLight(172, 40, 0.9, 0.3, 0.5, 0.35);
+      fillRect(177, 43, 4, 5, IDX.muted[2]); // Capsule canister
+      setPx(178, 45, IDX.accent[3]);
+      setPx(179, 46, IDX.neon[1]);
+
+      // Lower shelves: Colored archive boxes, folders & storage basket
+      fillRect(165, 53, 4, 11, IDX.muted[2]);
+      fillRect(170, 53, 4, 11, IDX.accent[2]);
+      fillRect(175, 53, 4, 11, IDX.surface[2]);
+      fillRect(181, 56, 7, 8, IDX.bg[2]);
+      fillRect(165, 70, 11, 10, IDX.accent[1]); // Storage basket
+      fillRect(178, 69, 4, 11, IDX.fg[3]);
+      fillRect(183, 69, 4, 11, IDX.muted[1]);
+
+      // 5. Resident Worker & Ergonomic Mesh Chair (center x96)
+      // Translucent anti-slip chair mat
+      for (let dy = -3; dy <= 3; dy++) {
+        const span = Math.round(14 * Math.sqrt(Math.max(0, 1 - (dy*dy)/10)));
+        for (let dx = -span; dx <= span; dx++) {
+          if (((dx + dy) & 1) === 0) {
+            const cur = idxBuf[(99 + dy + PAD) * FULL_W + (96 + dx + PAD)];
+            setPx(96 + dx, 99 + dy, shiftShade(cur, 1));
+          }
+        }
+      }
+
+      const isWalkingToMachine = (isReturn && h >= 3.8 && h <= 6.6);
+      const wearingHeadphones = (!isReturn && h >= 14.35) || (isReturn && h < 0.65);
+
+      // Coffee mug position & steam
+      let mugX = 82, mugY = 67;
+      let steamStrength = 0;
+      if (!isReturn) {
+        steamStrength = clamp(1.0 - (h - 19.5) / 3.1, 0, 1);
+      } else if (h >= 4.2 && h < 6.6) {
+        mugX = 169; mugY = 45;
+        steamStrength = h >= 4.6 ? 1.0 : 0;
+      } else if (h >= 6.6) {
+        mugX = 82; mugY = 67;
+        steamStrength = 1.0;
+      }
+      fillRect(mugX, mugY, 3, 3, IDX.bg[3]);
+      if (steamStrength > 0.05 && !reducedMotion) {
+        for (let s = 0; s < 4; s++) {
+          const sy = mugY - 2 - Math.floor((simTime * 3 + s * 1.5) % 6);
+          const sx = mugX + 1 + Math.round(Math.sin(simTime * 4 + s) * 0.8);
+          if (BAYER4[(sy & 3)*4 + (sx & 3)] < steamStrength * 14) {
+            setPx(sx, sy, IDX.bg[3]);
+          }
+        }
+      }
+
+      if (!wearingHeadphones && startleTimer <= 0) {
+        // Headphones resting on desk at x140
+        fillRect(138, 67, 5, 3, IDX.bg[3]);
+        fillRect(139, 68, 3, 2, IDX.muted[2]);
+      }
+
+      if (isWalkingToMachine) {
+        // Side-profile walking worker near shelf (x154)
+        const walkProgress = Math.abs((h - 5.2) / 1.4);
+        const wx = Math.round(lerp(154, 102, walkProgress));
+        const jumpY = startleTimer > 0 ? -2 : 0;
+        const step = Math.floor(simTime * 8) % 2;
+        // Head & hair
+        fillRect(wx - 2, 48 + jumpY, 6, 7, IDX.fg[0]);
+        fillRect(wx - 1, 51 + jumpY, 4, 4, IDX.accent[3]); // Face
+        if (!isBlinking) setPx(wx + 2, 52 + jumpY, IDX.fg[0]);
+        // White shirt torso
+        fillRect(wx - 2, 55 + jumpY, 6, 13, IDX.bg[3]);
+        // Legs walking
+        fillRect(wx - 1 + (step ? 2 : -1), 68 + jumpY, 2, 13, IDX.fg[1]);
+        fillRect(wx + 1 + (step ? -2 : 1), 68 + jumpY, 2, 13, IDX.fg[2]);
+      } else {
+        // Seated worker facing monitor (back to camera, center ~x98)
+        const deepLean = (!isReturn && h >= 21.5) ? 1 : 0;
+        const startleLift = startleTimer > 0 ? -2 : 0;
+        const wx = 98 + deepLean;
+        const wy = 47 + startleLift;
+
+        // Ergonomic Mesh Chair behind worker
+        fillRect(91, 55, 11, 16, IDX.fg[1]);
+        fillRect(95, 71, 3, 12, IDX.fg[0]);
+        fillRect(90, 83, 13, 2, IDX.fg[0]);
+
+        // White shirt torso with subtle fg fold shadows
+        fillRect(wx - 5, wy + 9, 13, 14, IDX.bg[3]);
+        fillRect(wx - 3, wy + 13, 1, 8, IDX.fg[3]);
+        fillRect(wx + 4, wy + 13, 1, 8, IDX.fg[3]);
+
+        // Blue badge lanyard lines at back of neck
+        setPx(wx - 1, wy + 9, IDX.muted[1]);
+        setPx(wx + 1, wy + 9, IDX.muted[1]);
+
+        // Screen rim light on right hair & right shoulder when room is dark
+        if (nightAmt > 0.45) {
+          for (let ry = wy + 1; ry < wy + 8; ry++) setPx(wx + 5, ry, IDX.muted[3]);
+          for (let ry = wy + 9; ry < wy + 20; ry++) setPx(wx + 8, ry, IDX.muted[3]);
+        }
+
+        // 9px wide black hair back-of-head + ears + highlight
+        fillRect(wx - 4, wy, 9, 8, IDX.fg[0]);
+        fillRect(wx - 2, wy + 1, 4, 1, IDX.fg[2]); // Hair highlight
+        setPx(wx - 5, wy + 4, IDX.accent[3]); // Left ear
+        setPx(wx + 5, wy + 4, IDX.accent[3]); // Right ear
+
+        // Ahoge (呆毛) popping up after 20:00 (1 strand at 20, 3 strands at 22)
+        if (!isReturn && h >= 20.0) {
+          setPx(wx, wy - 1, IDX.fg[0]);
+          setPx(wx + 1, wy - 2, IDX.fg[0]);
+          if (h >= 22.0) {
+            setPx(wx - 2, wy - 1, IDX.fg[0]);
+            setPx(wx + 2, wy - 1, IDX.fg[0]);
+          }
+        }
+
+        // White noise-canceling headphones (or slipped onto neck if startled)
+        if (wearingHeadphones && startleTimer <= 0) {
+          fillRect(wx - 4, wy - 1, 9, 1, IDX.bg[3]);
+          fillRect(wx - 5, wy + 2, 2, 4, IDX.bg[3]);
+          fillRect(wx + 4, wy + 2, 2, 4, IDX.bg[3]);
+        } else if (startleTimer > 0) {
+          fillRect(wx - 4, wy + 8, 9, 2, IDX.bg[3]);
+          // Startle "!" above head
+          fillRect(wx, wy - 6, 1, 3, IDX.neon[1]);
+          setPx(wx, wy - 2, IDX.neon[1]);
+        }
+
+        // Stretching arms overhead (0..1.3 on return)
+        if (isReturn && h <= 1.3) {
+          fillRect(wx - 6, wy - 3, 2, 12, IDX.bg[3]);
+          fillRect(wx + 6, wy - 3, 2, 12, IDX.bg[3]);
+        } else {
+          // Typing elbows alternating slightly
+          const elbowShift = (isCodeMode && !reducedMotion) ? (Math.floor(simTime * 10) % 2) : 0;
+          fillRect(wx - 6, wy + 14 + elbowShift, 2, 5, IDX.bg[3]);
+          fillRect(wx + 6, wy + 14 + (1 - elbowShift), 2, 5, IDX.bg[3]);
+        }
+      }
+
+      // 6. Message Bubbles (12..14 open, 15.2+ hits frosted glass, 7.7+ morning backlog flood)
+      const glassClosed = (!isReturn && h >= 15.3) || (isReturn && h < 7.4);
+      const stopNewBubbles = (!isReturn && h >= 21.5);
+
+      if (!isReturn && h < 15.2) {
+        nextBubbleTimer -= dt;
+        if (nextBubbleTimer <= 0) {
+          nextBubbleTimer = 1.5 + Math.random() * 1.1;
+          const fromNeighbor = Math.random() < 0.3;
+          bubbles.push({
+            sx: fromNeighbor ? (45 + Math.floor(Math.random() * 14)) : 22,
+            sy: fromNeighbor ? (25 + Math.floor(Math.random() * 30)) : 38,
+            t: 0,
+            dotCol: [IDX.surface[2], IDX.muted[2], IDX.neon[1]][Math.floor(Math.random() * 3)],
+            squashed: false,
+            squashY: 0,
+            alpha: 1.0
+          });
+        }
+      } else if (glassClosed && !stopNewBubbles && !isReturn) {
+        nextBubbleTimer -= dt;
+        if (nextBubbleTimer <= 0) {
+          nextBubbleTimer = 2.1 + Math.random() * 1.2;
+          bubbles.push({
+            sx: 22, sy: 38, t: 0,
+            dotCol: [IDX.surface[2], IDX.muted[2], IDX.neon[1]][Math.floor(Math.random() * 3)],
+            squashed: false, squashY: 0, alpha: 1.0
+          });
+        }
+      } else if (isReturn && h >= 7.7 && backlogCount > 0) {
+        backlogDrainTimer -= dt;
+        if (backlogDrainTimer <= 0) {
+          backlogDrainTimer = 0.14;
+          backlogCount--;
+          bubbles.push({
+            sx: 22, sy: 38, t: 0.25,
+            dotCol: [IDX.surface[2], IDX.muted[2], IDX.neon[1]][backlogCount % 3],
+            squashed: false, squashY: 0, alpha: 1.0
+          });
+        }
+      }
+
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        const b = bubbles[i];
+        if (!b.squashed) {
+          b.t += dt * 1.15;
+          const bx = Math.round(lerp(b.sx, 74, b.t));
+          const arc = Math.sin(b.t * Math.PI) * 14;
+          const by = Math.round(lerp(b.sy, 68, b.t) - arc);
+
+          if (glassClosed && bx >= 58 && by >= frostTopY) {
+            b.squashed = true;
+            b.squashY = by;
+            backlogCount = Math.max(4, backlogCount + 1);
+            setPx(59, by, IDX.bg[3]); // Impact flash
+          } else if (b.t >= 1.0) {
+            phoneFlash = 0.45;
+            phoneBadge = true;
+            bubbles.splice(i, 1);
+            continue;
+          } else {
+            const sz = b.t < 0.2 ? 1 : (b.t < 0.4 ? 3 : 5);
+            const sh = sz === 5 ? 4 : sz;
+            fillRect(bx, by, sz, sh, IDX.bg[3]);
+            if (sz >= 3) setPx(bx + sz - 1, by, b.dotCol);
+          }
+        } else {
+          b.squashY += dt * 7.0;
+          b.alpha -= dt * 0.85;
+          if (b.alpha <= 0 || b.squashY > 92) {
+            bubbles.splice(i, 1);
+            continue;
+          }
+          if (BAYER4[(Math.round(b.squashY) & 3) * 4] < b.alpha * 16) {
+            fillRect(58, Math.round(b.squashY), 2, 5, IDX.bg[3]);
+          }
+        }
+      }
+
+      // 7. Sunlight Dust Motes (Daytime)
+      if (!reducedMotion && nightAmt < 0.25) {
+        for (const d of dusts) {
+          const dx = Math.round(d.x + Math.sin(simTime * 0.8 + d.ph) * 2);
+          const dy = Math.round(d.y + Math.cos(simTime * 0.6 + d.ph) * 2);
+          if (dx > 12 && dx < 62 && dy > 12 && dy < 90) {
+            setPx(dx, dy, IDX.bg[3]);
+          }
+        }
+      }
+
+      // 8. Out-of-focus foreground "Boss" silhouette passing quickly when dragged too fast
+      if (!reducedMotion && bossPassTimer > 0) {
+        const prog = 1.0 - bossPassTimer / 0.5;
+        const bx = Math.round(lerp(-35, CORE_W + 15, prog));
+        for (let y = 78; y < CORE_H; y++) {
+          const shoulder = Math.abs(y - 95) * 0.5;
+          for (let xw = bx + Math.round(shoulder); xw < bx + 34 - Math.round(shoulder); xw++) {
+            if (BAYER4[(y & 3) * 4 + (xw & 3)] < 8) {
+              setPx(xw, y, IDX.fg[0]);
+            }
+          }
+        }
+      }
+
+      // Convert index buffer to RGBA
+      for (let i = 0; i < FULL_W * FULL_H; i++) {
+        const rgb = PAL[idxBuf[i]];
+        const o = i * 4;
+        rgbaBuf[o] = rgb[0];
+        rgbaBuf[o + 1] = rgb[1];
+        rgbaBuf[o + 2] = rgb[2];
+        rgbaBuf[o + 3] = 255;
+      }
+
+      buildLightField(emitGrid, 72, 42, lightRgba);
+      return { nightAmt, lampOn };
+    }
+
+    // Input & Physics
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      btn.setPointerCapture(e.pointerId);
+      dragging = true;
+      pointerStartX = e.clientX;
+      dragStartVal = x;
+    });
+
+    btn.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const rect = btn.getBoundingClientRect();
+      const capH = rect.height;
+      const travel = Math.max(20, rect.width - capH);
+      const dx = (e.clientX - pointerStartX) / travel;
+      targetX = clamp(dragStartVal + dx, 0, 1);
+    });
+
+    btn.addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      const movedPx = Math.abs(e.clientX - pointerStartX);
+      if (movedPx < 4) {
+        // Click toggle
+        targetX = x < 0.5 ? 1 : 0;
+        if (targetX === 0 && x >= 0.9) {
+          goingBack = true;
+          leaveFocusClock = getClock();
+        } else if (targetX === 1) {
+          goingBack = false;
+        }
+      } else {
+        const clampedVel = clamp(v, -3, 3);
+        targetX = (x + clampedVel * 0.09 >= 0.5) ? 1 : 0;
+        if (targetX === 0 && x >= 0.85) {
+          goingBack = true;
+          leaveFocusClock = getClock();
+        } else if (targetX === 1) {
+          goingBack = false;
+        }
+      }
+      btn.setAttribute('aria-checked', targetX === 1 ? 'true' : 'false');
+      btn.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        targetX = clamp(targetX + 0.04, 0, 1);
+        goingBack = false;
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (x >= 0.98 && !goingBack) {
+          goingBack = true;
+          leaveFocusClock = getClock();
+        }
+        targetX = clamp(targetX - 0.04, 0, 1);
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        targetX = targetX < 0.5 ? 1 : 0;
+        if (targetX === 0) {
+          goingBack = true;
+          leaveFocusClock = getClock();
+        } else {
+          goingBack = false;
+        }
+        btn.setAttribute('aria-checked', targetX === 1 ? 'true' : 'false');
+        btn.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+
+    function stepPhysics(dt) {
+      const prevX = x;
+      if (dragging) {
+        const alpha = 1.0 - Math.exp(-34 * dt);
+        x = lerp(x, targetX, alpha);
+        v = (x - prevX) / Math.max(dt, 1e-4);
+        if (Math.abs(v) > 3.4 && fastDragCooldown <= 0 && !reducedMotion) {
+          fastDragCooldown = 1.5;
+          startleTimer = 1.1;
+          bossPassTimer = 0.5;
+        }
+      } else {
+        // Critically damped spring (omega = 9.5, or 16 when reduced motion)
+        const omega = reducedMotion ? 16.0 : 9.5;
+        const disp = x - targetX;
+        const acc = -2 * omega * v - omega * omega * disp;
+        v += acc * dt;
+        x += v * dt;
+        if (x <= 0) {
+          if (v < -0.2 && !reducedMotion) bounceVel = Math.abs(v) * 2.2;
+          x = 0; v = 0;
+          if (goingBack) goingBack = false;
+        } else if (x >= 1) {
+          if (v > 0.2 && !reducedMotion) bounceVel = -Math.abs(v) * 2.2;
+          x = 1; v = 0;
+        }
+      }
+
+      // Press lift
+      const targetPress = dragging ? 1 : 0;
+      pressAmt = lerp(pressAmt, targetPress, 1.0 - Math.exp(-14 * dt));
+
+      // Underdamped stretch spring (k=170, c=11)
+      if (!reducedMotion) {
+        const targetS = Math.abs(v) * 0.42;
+        const sAcc = 170 * (targetS - stretchS) - 11 * stretchV;
+        stretchV += sAcc * dt;
+        stretchS += stretchV * dt;
+        stretchS = clamp(stretchS, 0, 0.45);
+
+        bounceOffset += bounceVel * dt;
+        bounceVel += (-180 * bounceOffset - 16 * bounceVel) * dt;
+      } else {
+        stretchS = 0;
+        bounceOffset = 0;
+      }
+    }
+
+    function drawFrame(dt) {
+      stepPhysics(dt);
+      const { nightAmt, lampOn } = renderWorld(dt);
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = wrap.getBoundingClientRect();
+      const cw = Math.max(10, Math.round(rect.width * dpr));
+      const ch = Math.max(10, Math.round(rect.height * dpr));
+
+      if (glCanvas.width !== cw || glCanvas.height !== ch) {
+        glCanvas.width = cw; glCanvas.height = ch;
+        fbCanvas.width = cw; fbCanvas.height = ch;
+      }
+
+      // Capsule dimensions: height = compH / 1.32, aspect 1.85
+      const capH = ch / 1.32;
+      const capW = capH * 1.85;
+      const shellThick = capH * 0.046;
+      const winH = capH - shellThick * 2;
+      const winW = capW - shellThick * 2;
+
+      // Integer scale k: floor(winH/112), or k+1 if cropped <= 12%
+      let k = Math.max(1, Math.floor(winH / CORE_H));
+      if (((k + 1) * CORE_H - winH) / ((k + 1) * CORE_H) <= 0.12) {
+        k = k + 1;
+      }
+
+      const lensRad = (winH * 0.5 - capH * 0.032) * (1.0 + pressAmt * 0.012);
+      const lensTravel = winW - winH;
+      const lensX = (cw * 0.5 - lensTravel * 0.5) + x * lensTravel + bounceOffset;
+
+      if (!comp) {
+        // 2D Canvas fallback
+        glCanvas.style.display = 'none';
+        fbCanvas.style.display = 'block';
+        const ctx = fbCanvas.getContext('2d');
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect((cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
+        ctx.clip();
+        const off = document.createElement('canvas');
+        off.width = FULL_W; off.height = FULL_H;
+        off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgbaBuf), FULL_W, FULL_H), 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(off, (cw - CORE_W*k)*0.5 - PAD*k, (ch - CORE_H*k)*0.5 - PAD*k, FULL_W*k, FULL_H*k);
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.beginPath();
+        ctx.arc(lensX, ch * 0.5, lensRad, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      const { gl, prog, vao, worldTex, lightTex, locs } = comp;
+      gl.viewport(0, 0, cw, ch);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      gl.useProgram(prog);
+      gl.bindVertexArray(vao);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, worldTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, FULL_W, FULL_H, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgbaBuf);
+      gl.uniform1i(locs.uWorldTex, 0);
+
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, lightTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 72, 42, 0, gl.RGBA, gl.UNSIGNED_BYTE, lightRgba);
+      gl.uniform1i(locs.uLightTex, 1);
+
+      gl.uniform1f(locs.uHasSurf, 0.0);
+      gl.uniform2f(locs.uCompSize, cw, ch);
+      gl.uniform2f(locs.uCapCenter, cw * 0.5, ch * 0.5);
+      gl.uniform2f(locs.uCapSize, capW, capH);
+      gl.uniform1f(locs.uShellThick, shellThick);
+      gl.uniform1f(locs.uLensX, lensX);
+      gl.uniform1f(locs.uLensRad, lensRad);
+      gl.uniform2f(locs.uLensStretch, 1.0 + 0.2 * stretchS, 1.0 - 0.075 * stretchS);
+      gl.uniform1f(locs.uPress, pressAmt);
+      gl.uniform1f(locs.uDispersion, 0.05);
+      gl.uniform1f(locs.uNight, nightAmt);
+
+      const dayShell = PAL[IDX.bg[3]];
+      const nightShell = PAL[IDX.fg[1]];
+      gl.uniform3f(locs.uShellDayCol, dayShell[0]/255, dayShell[1]/255, dayShell[2]/255);
+      gl.uniform3f(locs.uShellNightCol, nightShell[0]/255, nightShell[1]/255, nightShell[2]/255);
+      gl.uniform3f(locs.uWarmGlowCol, 0.96, 0.65, 0.22);
+      gl.uniform1f(locs.uWarmGlowAmt, lampOn ? 1.0 : 0.0);
+      gl.uniform2f(locs.uWarmCentroid, 145 / CORE_W, 57 / CORE_H);
+      gl.uniform1f(locs.uFlash, 0.0);
+      gl.uniform1f(locs.uK, k);
+      gl.uniform2f(locs.uWinTopLeft, (cw - CORE_W * k) * 0.5, (ch - CORE_H * k) * 0.5);
+      gl.uniform2f(locs.uWinSize, CORE_W * k, CORE_H * k);
+      gl.uniform2f(locs.uPad, PAD, PAD);
+      gl.uniform2f(locs.uWorldTexSize, FULL_W, FULL_H);
+      gl.uniform1f(locs.uTime, simTime);
+
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    return { drawFrame, getNight: () => {
+      const h = getClock() % 24;
+      return clamp(smoothstep(17.4, 20.2, h) + (1.0 - smoothstep(1.5, 3.6, h)), 0, 1);
+    }};
+  })();
+
+  // =========================================================================
+  // SCENE 2: BEIJING FOUR SEASONS SCROLL SWITCH
+  // =========================================================================
+  const BeijingApp = (() => {
+    const wrap = document.getElementById('beijingWrap');
+    const glCanvas = document.getElementById('beijingGL');
+    const fbCanvas = document.getElementById('beijing2D');
+    const sealCanvas = document.getElementById('sealCanvas');
+    const sealCtx = sealCanvas.getContext('2d');
+    const slider = document.getElementById('beijingSlider');
+    const comp = buildCompositor(glCanvas);
+
+    // 24 Beijing OKLab Colors
+    const BJ_DEFS = {
+      paper: { hex: '#f2ece0', L: [0.80, 0.88, 0.94, 0.985] },
+      red:   { hex: '#a8322d', L: [0.42, 0.52, 0.66, 0.82] },
+      gold:  { hex: '#e3b04b', L: [0.62, 0.74, 0.84, 0.92] },
+      blue:  { hex: '#2d4f8e', L: [0.36, 0.50, 0.70, 0.86] },
+      green: { hex: '#4f7a4a', L: [0.38, 0.50, 0.62, 0.76] },
+      ink:   { hex: '#1c2236', L: [0.16, 0.23, 0.31, 0.42] }
+    };
+    const PAL = [];
+    const IDX = {};
+    let cnt = 0;
+    for (const [k, def] of Object.entries(BJ_DEFS)) {
+      IDX[k] = [];
+      const lab = rgbToOklab(...hexToRgb01(def.hex));
+      for (const L of def.L) {
+        const rgb = oklabGamutSrgb(L, lab[1], lab[2]);
+        PAL.push([Math.round(rgb[0]*255), Math.round(rgb[1]*255), Math.round(rgb[2]*255)]);
+        IDX[k].push(cnt++);
+      }
+    }
+
+    const CORE_H = 96, PAD = 16;
+    let coreW = 320;
+    let fullW = coreW + PAD * 2;
+    const fullH = CORE_H + PAD * 2;
+    let idxBuf = new Uint8Array(fullW * fullH);
+    let rgbaBuf = new Uint8Array(fullW * fullH * 4);
+    const emitGrid = new Float32Array(144 * 44 * 3);
+    const lightRgba = new Uint8Array(144 * 44 * 4);
+
+    // 48x48 lens surface texture (willow catkins, raindrops, ginkgo leaf, frost/snow)
+    const surfRgba = new Uint8Array(48 * 48 * 4);
+    const rainDrops = Array.from({ length: 18 }, (_, i) => ({
+      x: 8 + ((i * 17) % 32),
+      y: 8 + ((i * 23) % 32),
+      r: 1 + (i % 2),
+      vy: 4 + (i % 5)
+    }));
+    let snowCapAmt = 1.0;
+
+    // 11x11 Seal Glyphs: 春、夏、秋、冬 + 雪、至、年、春
+    const SEAL_GLYPHS = {
+      '春': [
+        '.....#.....','.#########.','.....#.....','..#######..','.....#.....',
+        '###########','...#...#...','..#######..','.#.#####.#.','#..#...#..#','...#####...'
+      ],
+      '夏': [
+        '###########','.....#.....','..#######..','..#.....#..','..#######..',
+        '..#.....#..','..#######..','...##......','..#.#####..','.#....##...','#..###.####'
+      ],
+      '秋': [
+        '...##..#...','.##....#...','..#..#.#.#.','#####..#...','..#....#...',
+        '.###..#.#..','#.#.#.#.#..','..#..#...#.','..#..#...#.','..#.#.....#','..#........'
+      ],
+      '冬': [
+        '....#......','...######..','..#....#...','.#.#..#....','....##.....',
+        '..##..##...','##.....####','.....##....','......##...','....##.....','.....###...'
+      ],
+      '雪': [
+        '.#########.', '.....#.....', '###########', '#....#....#', '..##.#.##..',
+        '.....#.....', '..#######..', '........#..', '..#######..', '........#..', '..#######..'
+      ],
+      '至': [
+        '.#########.','.....#.....','...#...#...','..#######..','........#..',
+        '.....#.....','..#######..','.....#.....','.....#.....','###########','...........'
+      ],
+      '年': [
+        '...#.......','..########.','.#...#.....','.....#.....','..########.','..#..#.....',
+        '..#..#.....','###########','.....#.....','.....#.....','.....#.....'
+      ]
+    };
+
+    const STOP_LABELS_OUT = [
+      '春 · 长城 · 清晨',
+      '夏 · 颐和园 · 午后',
+      '秋 · 天坛 · 傍晚',
+      '冬 · 故宫角楼 · 夜'
+    ];
+    const STOP_LABELS_RET = [
+      '立春 · 长城 · 日出',
+      '春节 · 颐和园 · 黎明',
+      '冬至 · 天坛 · 凌晨',
+      '大雪 · 故宫角楼 · 深夜'
+    ];
+
+    let x = 0; // 0..1
+    let v = 0;
+    let targetX = 0;
+    let dragging = false;
+    let pointerStartX = 0;
+    let dragStartVal = 0;
+    let pressAmt = 0;
+    let stretchS = 0, stretchV = 0;
+    let bounceOffset = 0, bounceVel = 0;
+    let isReturn = false;
+    let winterStaySec = 0;
+    let simTime = 0;
+    let lightningTimer = 0;
+    let nextLightning = 5.5;
+    let sealStampOffset = 0;
+    let sealFadeFrames = 0;
+    let prevStopIdx = 0;
+
+    // Orange Tabby Cat state
+    let catX = 48;
+    let catDir = 1;
+    let catStopTimer = 1.0;
+    let catJumpTimer = 0;
+    let catSnow = 0;
+    let catScarf = false;
+    let catSlip = false;
+    let fastDragCd = 0;
+    let birdsStartled = 0;
+
+    const willowFluff = Array.from({ length: 16 }, (_, i) => ({
+      x: (i * 29) % 240, y: 15 + (i * 19) % 52, ph: i
+    }));
+    const ginkgoLeaves = Array.from({ length: 18 }, (_, i) => ({
+      x: (i * 37) % 300, y: 12 + (i * 23) % 58, ph: i * 0.9
+    }));
+    const snowFlakes = Array.from({ length: 48 }, (_, i) => ({
+      x: (i * 41) % 340, y: (i * 19) % 72, layer: i & 1
+    }));
+
+    function getAnnualY() {
+      return !isReturn ? (3.0 * x) : (3.0 + (1.0 - x));
+    }
+
+    function getLightingState(Y) {
+      // Lighting columns: 0=Day, 1=Golden, 2=Dusk, 3=Night
+      if (!isReturn) {
+        if (Y <= 1.3) return { c0: 0, c1: 0, blend: 0 };
+        if (Y <= 1.7) return { c0: 0, c1: 1, blend: (Y - 1.3) / 0.4 };
+        if (Y <= 2.3) return { c0: 1, c1: 1, blend: 0 };
+        if (Y <= 2.55) return { c0: 1, c1: 2, blend: (Y - 2.3) / 0.25 };
+        if (Y <= 2.75) return { c0: 2, c1: 2, blend: 0 };
+        if (Y <= 2.95) return { c0: 2, c1: 3, blend: (Y - 2.75) / 0.2 };
+        return { c0: 3, c1: 3, blend: 0 };
+      } else {
+        // Return path: midnight -> dawn -> sunrise (monotonically brightening)
+        const p = clamp(Y - 3.0, 0, 1); // 0 at winter (g), 1 at spring (a)
+        if (p < 0.35) return { c0: 3, c1: 3, blend: 0 };
+        if (p < 0.65) return { c0: 3, c1: 2, blend: (p - 0.35) / 0.30 };
+        if (p < 0.88) return { c0: 2, c1: 1, blend: (p - 0.65) / 0.23 };
+        return { c0: 1, c1: 0, blend: (p - 0.88) / 0.12 };
+      }
+    }
+
+    function getSeasonBlend(Y) {
+      if (isReturn) return { s0: 3, s1: 3, blend: 0 }; // Return stays winter scenery until melting at Lichun
+      const seg = Math.floor(clamp(Y, 0, 2.999));
+      const frac = Y - seg;
+      const b = clamp((frac - 0.30) / 0.40, 0, 1);
+      return { s0: seg, s1: Math.min(3, seg + 1), blend: b };
+    }
+
+    function setPx(cx, cy, colIdx) {
+      const fx = cx + PAD, fy = cy + PAD;
+      if (fx < 0 || fx >= fullW || fy < 0 || fy >= fullH) return;
+      idxBuf[fy * fullW + fx] = colIdx;
+    }
+
+    function fillRect(x0, y0, w, h, colIdx) {
+      for (let y = y0; y < y0 + h; y++) {
+        for (let xw = x0; xw < x0 + w; xw++) setPx(xw, y, colIdx);
+      }
+    }
+
+    function sampleSeasonalMat(mat4x4, sb, lf, xw, y) {
+      const b = BAYER4[(y & 3) * 4 + (xw & 3)] / 16.0;
+      const s = sb.blend > b ? sb.s1 : sb.s0;
+      const l = lf.blend > b ? lf.c1 : lf.c0;
+      return mat4x4[s][l];
+    }
+
+    function sampleStaticMat(mat4, lf, xw, y) {
+      const b = BAYER4[(y & 3) * 4 + (xw & 3)] / 16.0;
+      const l = lf.blend > b ? lf.c1 : lf.c0;
+      return mat4[l];
+    }
+
+    function addLight(cx, cy, r, g, b, weight) {
+      const gx = clamp(Math.floor(((cx + PAD) / fullW) * 144), 0, 143);
+      const gy = clamp(Math.floor(((cy + PAD) / fullH) * 44), 0, 43);
+      const o = (gy * 144 + gx) * 3;
+      emitGrid[o] += r * weight;
+      emitGrid[o + 1] += g * weight;
+      emitGrid[o + 2] += b * weight;
+    }
+
+    function bump(x, center, width) {
+      const d = (x - center) / width;
+      if (Math.abs(d) >= 1.0) return 0;
+      return 0.5 * (1.0 + Math.cos(Math.PI * d));
+    }
+
+    function drawSeal(stopIdx) {
+      const sw = 15, sh = 51;
+      sealCanvas.width = sw;
+      sealCanvas.height = sh;
+      const img = sealCtx.createImageData(sw, sh);
+      const d = img.data;
+      const chars = isReturn ? ['雪', '至', '年', '春'] : ['春', '夏', '秋', '冬'];
+      const activeCharIdx = isReturn ? (3 - stopIdx) : stopIdx;
+
+      const baseRed = PAL[IDX.red[1]];
+      const speckRed = PAL[IDX.red[2]];
+      const palePink = PAL[IDX.red[2]];
+      const whitePaper = PAL[IDX.paper[3]];
+
+      for (let y = 0; y < sh; y++) {
+        for (let xw = 0; xw < sw; xw++) {
+          const o = (y * sw + xw) * 4;
+          // Missing 4 corners
+          if ((xw === 0 || xw === sw - 1) && (y === 0 || y === sh - 1)) continue;
+          // ~22% random edge erosion
+          const isEdge = (xw === 0 || xw === sw - 1 || y === 0 || y === sh - 1);
+          const h = ((xw * 73 + y * 137) & 255) / 255;
+          if (isEdge && h < 0.22) continue;
+
+          let rgb = ((xw * 31 + y * 59) & 15) === 0 ? speckRed : baseRed;
+
+          // 4 vertical 11x11 glyphs, 1px spacing
+          const charSlot = Math.floor((y - 2) / 12);
+          const gy = (y - 2) % 12;
+          const gx = xw - 2;
+          if (charSlot >= 0 && charSlot < 4 && gy >= 0 && gy < 11 && gx >= 0 && gx < 11) {
+            const glyph = SEAL_GLYPHS[chars[charSlot]];
+            if (glyph && glyph[gy][gx] === '#') {
+              const isLit = (charSlot === activeCharIdx);
+              if (isLit) {
+                const ditherIn = sealFadeFrames > 0 && BAYER4[(y & 3)*4 + (xw & 3)] > (4 - sealFadeFrames) * 4;
+                rgb = ditherIn ? palePink : whitePaper;
+              } else {
+                rgb = palePink;
+              }
+            }
+          }
+
+          d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = 255;
+        }
+      }
+      sealCtx.putImageData(img, 0, 0);
+    }
+
+    function updateSurfaceTexture(Y, dt) {
+      surfRgba.fill(0);
+      const setS = (sx, sy, col, a = 255) => {
+        if (sx < 0 || sx >= 48 || sy < 0 || sy >= 48) return;
+        const o = (sy * 48 + sx) * 4;
+        surfRgba[o] = col[0]; surfRgba[o + 1] = col[1]; surfRgba[o + 2] = col[2]; surfRgba[o + 3] = a;
+      };
+
+      if (!isReturn && Y < 0.55) {
+        // Spring: 2-3 willow catkins jiggling gently on drag
+        const jiggle = Math.round(v * 1.5);
+        [[14, 16], [31, 22], [20, 34]].forEach(([bx, by], i) => {
+          const cx = bx + ((i & 1) ? jiggle : -jiggle);
+          setS(cx, by, PAL[IDX.paper[3]], 235);
+          setS(cx + 1, by, PAL[IDX.paper[2]], 210);
+          setS(cx, by + 1, PAL[IDX.paper[2]], 210);
+        });
+      } else if (!isReturn && Y >= 0.55 && Y < 1.45) {
+        // Summer: raindrops merging and sliding down with water trails
+        for (const dr of rainDrops) {
+          if (!reducedMotion) {
+            dr.y += dr.vy * dt * 2.4;
+            if (dr.y > 42) dr.y = 6;
+          }
+          const rx = Math.round(dr.x), ry = Math.round(dr.y);
+          setS(rx, ry, PAL[IDX.paper[3]], 210);
+          setS(rx, ry - 1, PAL[IDX.blue[3]], 150);
+          setS(rx, ry - 2, PAL[IDX.blue[2]], 85);
+        }
+      } else if (!isReturn && Y >= 1.5 && Y < 2.45) {
+        // Autumn: ginkgo leaf sliding across lens
+        const phase = (simTime * 0.22) % 1.0;
+        const lx = Math.round(10 + phase * 26 + Math.sin(phase * 6.28) * 4);
+        const ly = Math.round(6 + phase * 34);
+        setS(lx, ly, PAL[IDX.gold[3]], 245);
+        setS(lx + 1, ly, PAL[IDX.gold[2]], 245);
+        setS(lx, ly + 1, PAL[IDX.gold[2]], 245);
+        setS(lx - 1, ly + 1, PAL[IDX.gold[1]], 245);
+      } else if (Y >= 2.55) {
+        // Winter: frost along top rim + snow pile on top (shaken off if dragged fast)
+        if (Math.abs(v) > 2.8) snowCapAmt = Math.max(0.15, snowCapAmt - dt * 2.5);
+        else snowCapAmt = Math.min(1.0, snowCapAmt + dt * 0.15);
+
+        for (let sx = 10; sx < 38; sx++) {
+          const distCenter = Math.abs(sx - 24);
+          if (distCenter < 13) {
+            const topY = Math.round(2 + (distCenter * distCenter) / 38);
+            setS(sx, topY, PAL[IDX.blue[3]], 210);
+            if (snowCapAmt > 0.3 && distCenter < 10 * snowCapAmt) {
+              setS(sx, topY + 1, PAL[IDX.paper[3]], 245);
+              setS(sx, topY + 2, PAL[IDX.paper[2]], 220);
+            }
+          }
+        }
+      }
+    }
+
+    function renderWorld(dt, centers) {
+      simTime += dt;
+      if (fastDragCd > 0) fastDragCd -= dt;
+      if (birdsStartled > 0) birdsStartled -= dt;
+      if (catJumpTimer > 0) catJumpTimer -= dt;
+      if (sealFadeFrames > 0) sealFadeFrames--;
+
+      const Y = getAnnualY();
+      const lf = getLightingState(Y);
+      const sb = getSeasonBlend(Y);
+
+      // Winter 30s snow accumulation -> snow stops & moon emerges around 23:00
+      if (!isReturn && x >= 0.995 && !dragging) {
+        winterStaySec = Math.min(35, winterStaySec + dt);
+      } else if (!isReturn && x < 0.96) {
+        winterStaySec = 0;
+      }
+
+      // Summer lightning (Y in 0.62..0.96)
+      let flash = 0;
+      if (!isReturn && Y >= 0.62 && Y <= 0.96 && !reducedMotion) {
+        nextLightning -= dt;
+        if (nextLightning <= 0) {
+          lightningTimer = 0.08;
+          nextLightning = 4.2 + Math.random() * 4.5;
+        }
+      }
+      if (lightningTimer > 0) {
+        lightningTimer -= dt;
+        flash = 1.0;
+      }
+
+      // Stage night background (~0.85 on winter night, 0 otherwise)
+      let nightAmt = 0;
+      if (Y >= 2.75 && Y <= 3.35) {
+        nightAmt = 0.85 * smoothstep(2.75, 2.98, Y) * (1.0 - smoothstep(3.15, 3.45, Y));
+      }
+      stage.style.setProperty('--night', nightAmt.toFixed(3));
+      if (flash > 0.5) {
+        stage.style.backgroundColor = '#ffffff';
+      } else {
+        stage.style.backgroundColor = mixOklabHex('#f2ece0', '#1c2236', nightAmt);
+      }
+
+      emitGrid.fill(0);
+
+      // Seasonal x Lighting Material Tables
+      const MAT_SKY = [
+        [IDX.blue[3], IDX.gold[3], IDX.red[3], IDX.ink[0]],
+        [IDX.blue[2], IDX.gold[2], IDX.red[2], IDX.ink[0]],
+        [IDX.blue[2], IDX.gold[2], IDX.red[2], IDX.ink[1]],
+        [IDX.blue[3], IDX.gold[3], IDX.ink[2], IDX.ink[0]]
+      ];
+      const MAT_MTN_SUN = [
+        [IDX.green[3], IDX.gold[2], IDX.red[1], IDX.ink[2]],
+        [IDX.green[2], IDX.gold[1], IDX.red[1], IDX.ink[2]],
+        [IDX.green[1], IDX.gold[2], IDX.red[1], IDX.ink[2]],
+        [IDX.paper[3], IDX.paper[2], IDX.blue[3], IDX.blue[3]]
+      ];
+      const MAT_MTN_SHADE = [
+        [IDX.green[1], IDX.green[0], IDX.ink[2], IDX.ink[1]],
+        [IDX.green[0], IDX.green[0], IDX.ink[2], IDX.ink[1]],
+        [IDX.green[0], IDX.green[0], IDX.ink[2], IDX.ink[1]],
+        [IDX.blue[3],  IDX.blue[2],  IDX.blue[2], IDX.blue[2]]
+      ];
+      const MAT_WATER = [
+        [IDX.blue[3], IDX.gold[2], IDX.red[2], IDX.ink[1]],
+        [IDX.blue[2], IDX.blue[1], IDX.ink[2], IDX.ink[1]],
+        [IDX.blue[1], IDX.gold[1], IDX.ink[2], IDX.ink[1]],
+        [IDX.blue[3], IDX.blue[3], IDX.blue[2], IDX.blue[2]]
+      ];
+      const MAT_GRASS = [
+        [IDX.green[3], IDX.gold[2], IDX.green[1], IDX.ink[1]],
+        [IDX.green[2], IDX.green[1], IDX.ink[2], IDX.ink[1]],
+        [IDX.gold[1],  IDX.gold[0],  IDX.red[0], IDX.ink[1]],
+        [IDX.paper[3], IDX.paper[2], IDX.blue[3], IDX.blue[3]]
+      ];
+      const MAT_ROAD = [
+        [IDX.paper[1], IDX.gold[2], IDX.ink[3], IDX.ink[2]],
+        [IDX.paper[1], IDX.paper[0], IDX.ink[3], IDX.ink[2]],
+        [IDX.gold[2],  IDX.gold[1],  IDX.red[1], IDX.ink[2]],
+        [IDX.paper[2], IDX.paper[1], IDX.blue[3], IDX.blue[2]]
+      ];
+
+      // Static (non-seasonal) 4-lighting palettes
+      const MAT_WALL_RED = [IDX.red[1], IDX.red[2], IDX.red[0], IDX.red[0]];
+      const MAT_ROOF_GOLD = [IDX.gold[2], IDX.gold[3], IDX.gold[1], IDX.gold[0]];
+      const MAT_ROOF_BLUE = [IDX.blue[1], IDX.blue[1], IDX.blue[0], IDX.ink[2]];
+      const MAT_MARBLE = [IDX.paper[3], IDX.gold[3], IDX.paper[1], IDX.blue[2]];
+
+      const [a, c, t, g] = centers;
+
+      // Sky tint base into light field
+      const skyTint = sb.s0 === 0 ? [0.98, 0.88, 0.90] : (sb.s0 === 1 ? [0.96, 0.98, 1.0] : (sb.s0 === 2 ? [1.0, 0.82, 0.45] : [0.35, 0.48, 0.78]));
+      const skyStr = sb.s0 === 3 ? 0.14 : 0.32;
+      for (let i = 0; i < 144 * 44; i++) {
+        emitGrid[i * 3 + 0] += skyTint[0] * skyStr;
+        emitGrid[i * 3 + 1] += skyTint[1] * skyStr;
+        emitGrid[i * 3 + 2] += skyTint[2] * skyStr;
+      }
+
+      // 1. Sky Background (y = -PAD .. 65)
+      for (let y = -PAD; y < 65; y++) {
+        for (let xw = -PAD; xw < coreW + PAD; xw++) {
+          let col = sampleSeasonalMat(MAT_SKY, sb, lf, xw, y);
+          // Spring dawn horizon pale glow + low sun at left
+          if (!isReturn && Y < 0.35 && y > 38) col = IDX.paper[3];
+          // Autumn upper-blue / lower-gold sky
+          if (!isReturn && Y >= 1.65 && Y <= 2.35 && y > 34) col = IDX.gold[3];
+          setPx(xw, y, col);
+        }
+      }
+
+      // Sun / Moon & Stars
+      if (!isReturn && Y < 0.45) {
+        // Spring morning sun at left
+        fillRect(a - 36, 36, 5, 5, IDX.gold[3]);
+        addLight(a - 34, 38, 1.0, 0.85, 0.55, 1.4);
+      } else if (!isReturn && Y >= 1.65 && Y <= 2.35) {
+        // Autumn setting sun at left
+        fillRect(t - 38, 38, 6, 6, IDX.gold[2]);
+        addLight(t - 35, 41, 1.0, 0.68, 0.25, 1.6);
+      } else if (Y >= 2.8) {
+        // Winter night stars + moon (emerges after snow stops at 23:00)
+        for (let s = 0; s < 26; s++) {
+          const sx = (s * 43 + 11) % coreW;
+          const sy = 4 + ((s * 19) % 28);
+          setPx(sx, sy, IDX.paper[3]);
+        }
+        if (winterStaySec > 18 || isReturn) {
+          fillRect(g - 26, 12, 5, 5, IDX.paper[3]);
+          addLight(g - 24, 14, 0.75, 0.85, 1.0, 0.9);
+        }
+      }
+
+      // 2. Far Horizon: Western Hills (left half) + City Silhouette (right half) + Beihai White Dagoba
+      for (let xw = -PAD; xw < coreW + PAD; xw++) {
+        if (xw < (c + t) * 0.5) {
+          const hillTop = Math.round(44 + (xw / coreW) * 18 - Math.sin(xw * 0.04) * 3);
+          setPx(xw, hillTop, IDX.paper[2]);
+          for (let y = hillTop + 1; y < 65; y++) setPx(xw, y, IDX.blue[3]);
+        } else {
+          const cityTop = 55 - ((xw * 13) % 5);
+          for (let y = cityTop; y < 65; y++) {
+            setPx(xw, y, nightAmt > 0.4 ? IDX.ink[1] : IDX.blue[2]);
+          }
+          if (nightAmt > 0.5 && (xw % 4 === 0)) {
+            setPx(xw, cityTop + 2, IDX.gold[2]);
+          }
+        }
+      }
+      // Beihai White Dagoba Easter Egg on horizon between Summer Palace (c) and Temple of Heaven (t)
+      const bx = Math.round((c + t) * 0.5);
+      fillRect(bx - 2, 52, 5, 4, IDX.paper[3]);
+      fillRect(bx - 1, 49, 3, 3, IDX.paper[3]);
+      setPx(bx, 47, IDX.gold[3]);
+
+      // 3. Scenic Landmark 1: Great Wall (center a)
+      const wallNodes = [
+        [-PAD, 66, 6], [a - 32, 50, 5], [a - 18, 37, 5], [a - 7, 49, 4],
+        [a + 2, 53, 4], [a + 16, 35, 4], [a + 28, 46, 3], [a + 36, 49, 3],
+        [a + 46, 38, 2], [a + 58, 45, 2], [a + 72, 50, 1]
+      ];
+      function getWallAt(xw) {
+        for (let i = 0; i < wallNodes.length - 1; i++) {
+          const [x0, y0, th0] = wallNodes[i];
+          const [x1, y1, th1] = wallNodes[i + 1];
+          if (xw >= x0 && xw <= x1) {
+            const f = (xw - x0) / Math.max(1, x1 - x0);
+            return { y: Math.round(lerp(y0, y1, f)), th: Math.max(1, Math.round(lerp(th0, th1, f))) };
+          }
+        }
+        return null;
+      }
+
+      const meltY = isReturn ? Math.round(lerp(66, 24, clamp((Y - 3.65) / 0.35, 0, 1))) : 0;
+
+      for (let xw = a - 65; xw <= a + 76; xw++) {
+        // 3 rounded peaks taller than the Great Wall
+        const ridge = Math.round(45 - 19 * bump(xw, a - 18, 25) - 21 * bump(xw, a + 16, 23) - 14 * bump(xw, a + 46, 19) + Math.max(0, (xw - (a + 30)) * 0.42));
+        const ridgeNext = Math.round(45 - 19 * bump(xw + 1, a - 18, 25) - 21 * bump(xw + 1, a + 16, 23) - 14 * bump(xw + 1, a + 46, 19) + Math.max(0, (xw + 1 - (a + 30)) * 0.42));
+        const isSunFacing = ridgeNext <= ridge; // Light from left
+
+        for (let y = ridge; y < 65; y++) {
+          let col = isSunFacing
+            ? sampleSeasonalMat(MAT_MTN_SUN, sb, lf, xw, y)
+            : sampleSeasonalMat(MAT_MTN_SHADE, sb, lf, xw, y);
+
+          // Lichun snow melting bottom-up on return
+          if (isReturn && Y > 3.65 && y >= meltY) {
+            col = isSunFacing ? IDX.green[3] : IDX.green[1];
+          }
+          // Spring pink/white mountain peach blossoms (~9% accent)
+          if ((!isReturn && sb.s0 === 0) || (isReturn && Y > 3.75 && y >= meltY)) {
+            const h = ((xw * 47 + y * 83) & 255) / 255;
+            if (h < 0.09) col = (h < 0.045) ? IDX.red[3] : IDX.paper[3];
+          }
+          // Autumn red foliage flecks
+          if (!isReturn && sb.s0 === 2) {
+            const h = ((xw * 53 + y * 97) & 255) / 255;
+            if (h < 0.08) col = IDX.red[2];
+          }
+          setPx(xw, y, col);
+        }
+
+        // Great Wall ribbon backed against the mountain slope
+        const wSeg = getWallAt(xw);
+        if (wSeg) {
+          const isWinterSnow = (Y >= 2.75 && !(isReturn && Y > 3.85));
+          const topCol = isWinterSnow ? IDX.paper[3] : sampleStaticMat([IDX.paper[2], IDX.gold[3], IDX.paper[1], IDX.blue[2]], lf, xw, wSeg.y);
+          const bodyCol = isWinterSnow ? IDX.ink[3] : sampleStaticMat([IDX.paper[1], IDX.gold[2], IDX.paper[0], IDX.ink[2]], lf, xw, wSeg.y + 1);
+          setPx(xw, wSeg.y, topCol);
+          if ((xw & 1) === 0) setPx(xw, wSeg.y - 1, topCol); // Crenellations every 2 cols
+          for (let dy = 1; dy <= wSeg.th; dy++) setPx(xw, wSeg.y + dy, bodyCol);
+          setPx(xw, wSeg.y + wSeg.th + 1, IDX.ink[1]);
+          setPx(xw, wSeg.y + wSeg.th + 2, IDX.ink[2]);
+        }
+      }
+
+      // 3 Watchtowers (9x9 at a-18, 7x7 at a+16, 5x5 at a+46)
+      [[a - 18, 37, 9], [a + 16, 35, 7], [a + 46, 38, 5]].forEach(([tx, wy, sz]) => {
+        const half = Math.floor(sz / 2);
+        const topY = wy - sz + 2;
+        for (let dy = 0; dy < sz; dy++) {
+          for (let dx = -half; dx <= half; dx++) {
+            const col = dx < 0 ? IDX.paper[2] : IDX.paper[0];
+            setPx(tx + dx, topY + dy, nightAmt > 0.5 ? IDX.ink[2] : col);
+          }
+        }
+        // Crenellations & dark arched windows
+        for (let dx = -half; dx <= half; dx += 2) setPx(tx + dx, topY - 1, IDX.paper[3]);
+        setPx(tx, topY + Math.floor(sz * 0.5), IDX.ink[0]);
+      });
+
+      // Tourist taking selfie on Great Wall near a-10 + first peach blossom at Lichun
+      setPx(a - 10, 44, IDX.red[2]);
+      setPx(a - 10, 43, IDX.paper[3]);
+      setPx(a - 9, 43, IDX.blue[3]); // Phone
+      if (isReturn && Y > 3.7) {
+        setPx(a - 14, 36, IDX.red[3]);
+        setPx(a - 13, 36, IDX.paper[3]);
+      }
+
+      // 4. Scenic Landmark 2: Summer Palace (center c)
+      // Longevity Hill (center c+22, top y42, parabolic)
+      for (let xw = c - 14; xw <= c + 56; xw++) {
+        const d = (xw - (c + 22)) / 34;
+        if (Math.abs(d) <= 1.0) {
+          const hy = Math.round(42 + d * d * 23);
+          const sunSide = xw <= c + 22;
+          for (let y = hy; y < 65; y++) {
+            setPx(xw, y, sunSide ? sampleSeasonalMat(MAT_MTN_SUN, sb, lf, xw, y) : sampleSeasonalMat(MAT_MTN_SHADE, sb, lf, xw, y));
+          }
+        }
+      }
+      // Tower of Buddhist Incense (c+22, triple octagonal roof, gold tiles + green trim, red pillars)
+      const fx = c + 22;
+      fillRect(fx - 4, 41, 9, 3, IDX.paper[1]); // Stone base
+      fillRect(fx - 3, 37, 7, 4, sampleStaticMat(MAT_WALL_RED, lf, fx, 38));
+      [[35, 5], [31, 4], [27, 3]].forEach(([ry, hw]) => {
+        fillRect(fx - hw, ry, hw * 2 + 1, 2, sampleStaticMat(MAT_ROOF_GOLD, lf, fx, ry));
+        setPx(fx - hw, ry + 1, IDX.green[2]);
+        setPx(fx + hw, ry + 1, IDX.green[2]);
+      });
+      setPx(fx, 25, IDX.gold[3]);
+      // 3 Paiyun Hall small gold roofs on hillside
+      [[c + 12, 47], [c + 22, 48], [c + 32, 47]].forEach(([px, py]) => {
+        fillRect(px - 2, py, 5, 2, sampleStaticMat(MAT_ROOF_GOLD, lf, px, py));
+      });
+
+      // 5. Scenic Landmark 3: Temple of Heaven (center t)
+      // Cypress groves & Ginkgo trees at t +- 39
+      for (let xw = c + 44; xw <= g - 44; xw++) {
+        const distT = Math.abs(xw - t);
+        if (distT > 16 && (xw % 6 === 0)) {
+          const treeH = Math.max(5, Math.round(16 - distT * 0.16));
+          const isGinkgo = (Math.abs(xw - (t - 39)) <= 2 || Math.abs(xw - (t + 39)) <= 2);
+          const crownTop = 64 - treeH - (isGinkgo ? 3 : 0);
+          const crownCol = isGinkgo
+            ? (sb.s0 === 2 ? IDX.gold[3] : (sb.s0 === 3 ? IDX.ink[2] : IDX.green[2]))
+            : (sb.s0 === 3 ? IDX.ink[2] : IDX.green[1]);
+          fillRect(xw, 64 - 3, 1, 3, IDX.ink[1]);
+          fillRect(xw - 2, crownTop, 5, treeH - 2, crownCol);
+          if (sb.s0 === 3) fillRect(xw - 2, crownTop, 5, 1, IDX.paper[3]); // Snow cap
+        }
+      }
+      // Hall of Prayer for Good Harvests (triple blue tiled roofs y18..25, 27..34, 36..44, gold finial y12..17)
+      fillRect(t, 12, 1, 6, IDX.gold[3]);
+      [[18, 8, 6], [27, 8, 9], [36, 9, 12]].forEach(([ry, rh, hw]) => {
+        for (let dy = 0; dy < rh; dy++) {
+          const curW = Math.round(hw * (0.45 + 0.55 * (dy / rh)));
+          fillRect(t - curW, ry + dy, curW * 2 + 1, 1, sampleStaticMat(MAT_ROOF_BLUE, lf, t, ry + dy));
+          if (sb.s0 === 3 && dy === 0) fillRect(t - curW, ry, curW * 2 + 1, 1, IDX.paper[3]);
+        }
+        fillRect(t - hw + 2, ry + rh, (hw - 2) * 2 + 1, 2, sampleStaticMat(MAT_WALL_RED, lf, t, ry + rh));
+      });
+      // 3-tier White Marble Altar (y49..60) with balustrades
+      [[49, 4, 15], [53, 4, 18], [57, 4, 21]].forEach(([ay, ah, hw]) => {
+        const mCol = sampleStaticMat(MAT_MARBLE, lf, t, ay);
+        fillRect(t - hw, ay, hw * 2 + 1, ah, mCol);
+        for (let bx = t - hw; bx <= t + hw; bx += 2) setPx(bx, ay - 1, mCol);
+      });
+      // Low hedge row in front of altar + Dongzhi lantern pole at Winter Solstice
+      fillRect(t - 22, 61, 45, 3, sb.s0 === 3 ? IDX.paper[3] : IDX.green[1]);
+      if (isReturn && Y >= 3.2 && Y <= 3.55) {
+        fillRect(t - 26, 36, 1, 28, IDX.ink[2]);
+        fillRect(t - 27, 38, 3, 3, IDX.red[2]);
+        addLight(t - 26, 39, 1.0, 0.35, 0.2, 1.4);
+      }
+
+      // 6. Scenic Landmark 4: Forbidden City Corner Tower (center g)
+      // Palace Wall from g-62 to right edge (yellow tile cap y56..58, red wall y59..61)
+      const wallStart = g - 62;
+      fillRect(wallStart, 56, fullW - wallStart, 3, sb.s0 === 3 ? IDX.paper[3] : sampleStaticMat(MAT_ROOF_GOLD, lf, g, 57));
+      fillRect(wallStart, 59, fullW - wallStart, 3, sampleStaticMat(MAT_WALL_RED, lf, g, 60));
+
+      // Corner Tower (stone base y52..55, red walls y42..51, triple eaves, cross ridges, finial y11..15)
+      fillRect(g - 13, 52, 27, 4, sampleStaticMat(MAT_MARBLE, lf, g, 53));
+      fillRect(g - 11, 42, 23, 10, sampleStaticMat(MAT_WALL_RED, lf, g, 45));
+      [[38, 4, 14], [30, 7, 11], [21, 8, 8], [16, 5, 4]].forEach(([ey, eh, hw]) => {
+        fillRect(g - hw, ey, hw * 2 + 1, eh, sampleStaticMat(MAT_ROOF_GOLD, lf, g, ey));
+        if (sb.s0 === 3) {
+          fillRect(g - hw, ey, hw * 2 + 1, 1, IDX.paper[3]);
+          setPx(g - hw - 1, ey + eh - 1, IDX.paper[3]);
+          setPx(g + hw + 1, ey + eh - 1, IDX.paper[3]);
+        }
+      });
+      fillRect(g, 11, 1, 5, IDX.gold[3]);
+      if (sb.s0 === 3) addLight(g, 13, 1.0, 0.78, 0.3, 0.7);
+
+      // Red Lanterns every 12 columns along palace wall + under corner tower eaves
+      if (sb.s0 === 3) {
+        for (let lx = wallStart + 4; lx < fullW - PAD; lx += 12) {
+          fillRect(lx, 59, 2, 2, IDX.red[2]);
+          addLight(lx, 60, 1.0, 0.32, 0.18, 0.85);
+        }
+        [-9, 9].forEach(dx => {
+          fillRect(g + dx, 42, 2, 2, IDX.red[2]);
+          addLight(g + dx, 43, 1.0, 0.32, 0.18, 0.9);
+        });
+      }
+
+      // Two Weeping Willows flanking palace wall
+      [g - 56, g + 26].forEach(wx => {
+        const sway = (!reducedMotion && sb.s0 !== 3) ? Math.round(Math.sin(simTime * 2.2 + wx) * 1) : 0;
+        fillRect(wx, 50, 2, 12, IDX.ink[1]);
+        const wCol = sb.s0 === 2 ? IDX.gold[2] : (sb.s0 === 3 ? IDX.ink[2] : IDX.green[2]);
+        for (let bx = -5; bx <= 5; bx += 2) {
+          fillRect(wx + bx + sway, 46, 1, sb.s0 === 3 ? 7 : 12, wCol);
+        }
+      });
+
+      // Mist Bands dividing the 4 scenes at foothill height (tapered ends)
+      [Math.round((a + c) * 0.5), Math.round((c + t) * 0.5), Math.round((t + g) * 0.5)].forEach(mx => {
+        for (let dx = -16; dx <= 16; dx++) {
+          const span = Math.round(3 * (1.0 - Math.abs(dx) / 17));
+          for (let dy = 0; dy < span; dy++) {
+            setPx(mx + dx, 59 + dy, nightAmt > 0.5 ? IDX.blue[3] : IDX.paper[3]);
+          }
+        }
+      });
+
+      // 7. Continuous River / Lake / Moat (y = 62..68)
+      for (let y = 62; y < 69; y++) {
+        for (let xw = -PAD; xw < coreW + PAD; xw++) {
+          let wCol = sampleSeasonalMat(MAT_WATER, sb, lf, xw, y);
+          // Kunming Lake reflection on alternating rows (not in frozen winter)
+          if (sb.s0 !== 3 && Math.abs(xw - (c + 22)) < 16 && (y & 1) === 0) {
+            wCol = IDX.gold[1];
+          }
+          // Winter ice cracks (no reflections)
+          if (sb.s0 === 3 && ((xw + y * 5) % 19 === 0)) {
+            wCol = IDX.paper[3];
+          }
+          setPx(xw, y, wCol);
+        }
+      }
+      // Seventeen-Arch Bridge (c-46 to c+8, arched 2 rows, 17 small arches)
+      for (let xw = c - 46; xw <= c + 8; xw++) {
+        const archProgress = (xw - (c - 46)) / 54;
+        const archLift = Math.round(Math.sin(archProgress * Math.PI) * 2);
+        const by = 63 - archLift;
+        fillRect(xw, by, 1, 2, IDX.paper[2]);
+        if ((xw - (c - 46)) % 3 === 1) {
+          setPx(xw, by + 2, IDX.ink[1]); // Arch opening
+        }
+        if (isReturn && Y >= 3.35 && Y <= 3.7 && (xw % 4 === 0)) {
+          setPx(xw, by - 1, IDX.red[2]); // Spring Festival red lanterns on bridge
+          addLight(xw, by - 1, 1.0, 0.3, 0.18, 0.65);
+        }
+      }
+      // Lotuses in Kunming Lake (c+16..c+46) + Ice skaters on Tongzi River / Kunming Lake
+      if (sb.s0 === 0 || sb.s0 === 1) {
+        for (let lx = c + 16; lx <= c + 46; lx += 4) {
+          setPx(lx, 66, IDX.green[2]);
+          if (sb.s0 === 1 && (lx % 8 === 0)) setPx(lx, 65, IDX.red[3]);
+        }
+      } else if (sb.s0 === 3) {
+        // Kids on ice sleds on Tongzi River (g) + morning skaters at Chunjie (c)
+        const sledX = g - 16 + Math.round(Math.sin(simTime * 1.4) * 12);
+        fillRect(sledX, 64, 4, 2, IDX.red[2]);
+        setPx(sledX + 1, 63, IDX.gold[3]);
+        if (isReturn && Y >= 3.35 && Y <= 3.7) {
+          const skX = c - 10 + Math.round(Math.cos(simTime * 1.8) * 14);
+          fillRect(skX, 64, 2, 3, IDX.red[2]);
+        }
+      }
+
+      // Summer Diagonal Rain & Rainbow over 17-Arch Bridge (red outer, blue inner)
+      if (!isReturn && Y >= 0.62 && Y <= 0.96 && !reducedMotion) {
+        for (let r = 0; r < 55; r++) {
+          const rx = c - 48 + ((r * 13 + Math.floor(simTime * 28)) % 96);
+          const ry = 10 + ((r * 17 + Math.floor(simTime * 42)) % 52);
+          setPx(rx, ry, IDX.paper[3]);
+          setPx(rx - 1, ry + 1, IDX.blue[3]);
+        }
+      }
+      if (!isReturn && Y >= 0.90 && Y <= 1.32) {
+        const rbBands = [IDX.red[2], IDX.gold[3], IDX.green[3], IDX.blue[3]];
+        for (let rx = c - 44; rx <= c + 6; rx++) {
+          const norm = (rx - (c - 19)) / 25;
+          if (Math.abs(norm) <= 1.0) {
+            const topY = Math.round(32 + norm * norm * 22);
+            rbBands.forEach((bCol, bi) => {
+              if (BAYER4[((topY + bi) & 3) * 4 + (rx & 3)] < 11) {
+                setPx(rx, topY + bi, bCol);
+              }
+            });
+          }
+        }
+      }
+
+      // 8. Continuous Path (rows 69..71, cat feet at row 70) & Foreground Meadow (rows 72..95+PAD)
+      for (let y = 69; y <= 71; y++) {
+        for (let xw = -PAD; xw < coreW + PAD; xw++) {
+          let rCol = sampleSeasonalMat(MAT_ROAD, sb, lf, xw, y);
+          if (sb.s0 === 2 && ((xw * 11 + y * 7) % 13 === 0)) rCol = IDX.gold[3]; // Fallen ginkgo leaves
+          setPx(xw, y, rCol);
+        }
+      }
+      for (let y = 72; y < CORE_H + PAD; y++) {
+        for (let xw = -PAD; xw < coreW + PAD; xw++) {
+          let gCol = sampleSeasonalMat(MAT_GRASS, sb, lf, xw, y);
+          const h = ((xw * 61 + y * 103) & 255) / 255;
+          if (sb.s0 === 0 && h < 0.07) gCol = (h < 0.035) ? IDX.red[3] : IDX.gold[3]; // Spring wildflowers
+          if (sb.s0 === 2 && h < 0.12) gCol = (h < 0.06) ? IDX.red[2] : IDX.gold[3];  // Autumn leaves
+          if (sb.s0 === 3 && h < 0.04) gCol = IDX.ink[2]; // Twigs in snow
+          setPx(xw, y, gCol);
+        }
+      }
+
+      // 9. Forbidden City Orange Tabby Cat (feet at row 70, follows lens center, autumn chonk, winter snow)
+      const targetCatX = lerp(a, g, x);
+      const prevCatX = catX;
+      catX = lerp(catX, targetCatX, 1.0 - Math.exp(-6.0 * dt));
+      const catMoveDelta = catX - prevCatX;
+
+      if (Math.abs(catMoveDelta) > 0.03) {
+        catDir = catMoveDelta > 0 ? 1 : -1;
+        catStopTimer = 0;
+      } else {
+        catStopTimer += dt;
+      }
+
+      // Autumn chonkiness ("贴秋膘"): grows from Y=1.5 (0.15) to Autumn (1.0) to Winter (1.3), slims down at Lichun
+      let chonk = 0.15;
+      if (!isReturn) {
+        if (Y >= 1.5) chonk = lerp(0.15, 1.3, clamp((Y - 1.5) / 1.5, 0, 1));
+      } else {
+        chonk = lerp(1.3, 0.15, clamp((Y - 3.6) / 0.4, 0, 1));
+      }
+      const extraW = Math.floor(chonk / 0.4);
+
+      if (sb.s0 === 3 && catStopTimer > 0.6 && !isReturn) {
+        catSnow = Math.min(1.0, catSnow + dt * 0.25);
+      } else if (Math.abs(catMoveDelta) > 0.08) {
+        catSnow = 0; // Shakes off snow when waking up
+        if (isReturn && Y > 3.05) catScarf = true;
+      }
+      if (!isReturn && Y < 2.8) catScarf = false;
+
+      const cx = Math.round(catX);
+      const jumpOff = catJumpTimer > 0 ? -3 : 0;
+      const feetY = 70 + jumpOff;
+      const bodyW = 6 + extraW;
+      const bodyLeft = cx - Math.floor(bodyW / 2);
+
+      // Shadow under cat
+      fillRect(bodyLeft, 71, bodyW, 1, IDX.ink[1]);
+
+      const isSkating = (isReturn && Y >= 3.35 && Y <= 3.7 && Math.abs(catMoveDelta) > 0.04);
+      const isSleeping = (catStopTimer > 0.6 && catJumpTimer <= 0 && !isSkating);
+
+      if (isSleeping) {
+        // Curled / loafing cat basking
+        fillRect(bodyLeft, feetY - 3, bodyW + 1, 3, IDX.gold[2]);
+        fillRect(bodyLeft + 1, feetY - 3, bodyW - 1, 1, IDX.gold[1]); // Back stripes
+        fillRect(bodyLeft, feetY - 1, bodyW + 1, 1, IDX.paper[3]); // White belly
+        if (catSnow > 0.3) fillRect(bodyLeft + 1, feetY - 4, bodyW - 1, 1, IDX.paper[3]);
+      } else {
+        // Walking side-profile cat
+        fillRect(bodyLeft, feetY - 4, bodyW, 3, IDX.gold[2]);
+        for (let sx = bodyLeft + 1; sx < bodyLeft + bodyW - 1; sx += 2) {
+          setPx(sx, feetY - 4, IDX.gold[1]); // Tabby stripes
+        }
+        fillRect(bodyLeft + 1, feetY - 2, bodyW - 2, 1, IDX.paper[3]); // White belly
+
+        // Head & Pink Nose
+        const headX = catDir > 0 ? (bodyLeft + bodyW - 1) : (bodyLeft - 2);
+        fillRect(headX, feetY - 6, 3, 3, IDX.gold[2]);
+        setPx(headX, feetY - 7, IDX.gold[1]); // Ears
+        setPx(headX + 2, feetY - 7, IDX.gold[1]);
+        setPx(catDir > 0 ? headX + 2 : headX, feetY - 5, IDX.red[3]); // Pink nose
+        if (catScarf) fillRect(headX, feetY - 3, 3, 1, IDX.red[2]); // Red scarf
+
+        // Raised wagging tail
+        const tailX = catDir > 0 ? (bodyLeft - 1) : (bodyLeft + bodyW);
+        const wag = Math.round(Math.sin(simTime * 6) * 1);
+        setPx(tailX, feetY - 5, IDX.gold[2]);
+        setPx(tailX - catDir, feetY - 6 + wag, IDX.gold[1]);
+
+        // Legs (or splayed ice-sliding legs!)
+        if (isSkating) {
+          setPx(bodyLeft - 1, feetY, IDX.paper[3]);
+          setPx(bodyLeft + bodyW, feetY, IDX.paper[3]);
+        } else {
+          const stride = Math.floor(simTime * 10) % 2;
+          setPx(bodyLeft + 1 + stride, feetY - 1, IDX.paper[3]);
+          setPx(bodyLeft + bodyW - 2 - stride, feetY - 1, IDX.paper[3]);
+        }
+
+        // Startled puff-up spikes if dragged too fast
+        if (catJumpTimer > 0 && !reducedMotion) {
+          for (let px = bodyLeft - 1; px <= bodyLeft + bodyW; px += 2) {
+            setPx(px, feetY - 6, IDX.gold[3]);
+          }
+        }
+      }
+
+      // 10. Seasonal Weather Particles & Birds (Rewind reverses motion!)
+      const rewindSign = ((dragging && (( !isReturn && v < -0.02 ) || ( isReturn && v > 0.02 ))) ? -1 : 1);
+      if (!reducedMotion) {
+        if (sb.s0 === 0 || (isReturn && Y > 3.7)) {
+          // Spring willow catkins + swifts flying from left (fleeing when startled)
+          for (const wf of willowFluff) {
+            wf.x = (wf.x + dt * 6 * rewindSign + coreW) % coreW;
+            setPx(Math.round(wf.x), Math.round(wf.y + Math.sin(simTime * 2 + wf.ph) * 2), IDX.paper[3]);
+          }
+          const swiftBaseX = (a - 35 + simTime * 14 * rewindSign + coreW) % coreW;
+          const fleeY = birdsStartled > 0 ? -12 : 0;
+          for (let b = 0; b < 3; b++) {
+            const bx = Math.round((swiftBaseX + b * 7) % coreW);
+            const by = 18 + b * 3 + fleeY;
+            setPx(bx, by, IDX.ink[0]);
+            setPx(bx - 1, by - 1, IDX.ink[0]);
+            setPx(bx + 1, by - 1, IDX.ink[0]);
+          }
+        } else if (sb.s0 === 2) {
+          // Swirling ginkgo leaves + circling pigeons with whistle arcs around Temple of Heaven
+          for (const glf of ginkgoLeaves) {
+            glf.y = (glf.y + dt * 7 * rewindSign + 68) % 68;
+            const gx = Math.round(glf.x + Math.sin(simTime * 3 + glf.ph) * 4);
+            setPx(gx, Math.round(glf.y), IDX.gold[3]);
+          }
+          const fleeR = birdsStartled > 0 ? 18 : 0;
+          for (let p = 0; p < 5; p++) {
+            const ang = simTime * 1.6 * rewindSign + p * 1.25;
+            const px = Math.round(t + Math.cos(ang) * (18 + fleeR));
+            const py = Math.round(16 + Math.sin(ang) * 4 - fleeR * 0.5);
+            setPx(px, py, IDX.paper[3]);
+            setPx(px - 2, py + 1, IDX.paper[1]); // Whistle arc
+          }
+        } else if (sb.s0 === 3 && winterStaySec <= 18) {
+          // Two-layer heavy winter snow
+          for (const sf of snowFlakes) {
+            const spd = sf.layer === 0 ? 11 : 17;
+            sf.y = (sf.y + dt * spd * rewindSign + 72) % 72;
+            const sx = Math.round((sf.x + Math.sin(simTime * 2 + sf.y * 0.1) * 2 + coreW) % coreW);
+            setPx(sx, Math.round(sf.y), sf.layer === 0 ? IDX.paper[2] : IDX.paper[3]);
+          }
+        }
+      }
+
+      // VHS Rewind scanline shift every 6 rows when dragging backward with |v| > 0.05
+      const isRewinding = (rewindSign < 0 && Math.abs(v) > 0.05 && !reducedMotion);
+      for (let y = 0; y < fullH; y++) {
+        const shift = (isRewinding && (y % 6 === 0)) ? 1 : 0;
+        for (let xw = 0; xw < fullW; xw++) {
+          const srcX = clamp(xw - shift, 0, fullW - 1);
+          const rgb = PAL[idxBuf[y * fullW + srcX]];
+          const o = (y * fullW + xw) * 4;
+          rgbaBuf[o] = rgb[0];
+          rgbaBuf[o + 1] = rgb[1];
+          rgbaBuf[o + 2] = rgb[2];
+          rgbaBuf[o + 3] = 255;
+        }
+      }
+
+      updateSurfaceTexture(Y, dt);
+      buildLightField(emitGrid, 144, 44, lightRgba);
+      return { nightAmt, flash, isRewinding, sb };
+    }
+
+    function snapToNearestStop(customTarget) {
+      const stop = customTarget !== undefined
+        ? clamp(customTarget, 0, 3)
+        : Math.round(clamp(x + clamp(v, -3, 3) * 0.09, 0, 1) * 3);
+      targetX = stop / 3.0;
+
+      if (stop !== prevStopIdx) {
+        // Bounce bigger at endpoints (0, 3), smaller at middle stops (1, 2)
+        if (!reducedMotion) {
+          bounceVel = (stop === 0 || stop === 3) ? (stop > prevStopIdx ? 4.5 : -4.5) : (stop > prevStopIdx ? 2.2 : -2.2);
+        }
+        sealStampOffset = 1;
+        sealFadeFrames = 4;
+        prevStopIdx = stop;
+
+        if (!isReturn && stop === 3) {
+          // Reached Winter -> next leftward drag enters return path
+        } else if (isReturn && stop === 0) {
+          // Reached Lichun -> back to forward path, new year begins
+          isReturn = false;
+        }
+
+        const label = isReturn ? STOP_LABELS_RET[stop] : STOP_LABELS_OUT[stop];
+        slider.setAttribute('aria-valuenow', String(stop));
+        slider.setAttribute('aria-valuetext', label);
+        announce(label);
+        drawSeal(stop);
+        slider.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+
+    slider.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      slider.setPointerCapture(e.pointerId);
+      dragging = true;
+      pointerStartX = e.clientX;
+      dragStartVal = x;
+    });
+
+    slider.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const rect = slider.getBoundingClientRect();
+      const travel = Math.max(20, rect.width - rect.height);
+      const dx = (e.clientX - pointerStartX) / travel;
+      if (!isReturn && x >= 0.98 && dx < -0.02) isReturn = true;
+      targetX = clamp(dragStartVal + dx, 0, 1);
+
+      const curStop = Math.round(targetX * 3);
+      if (curStop !== prevStopIdx) {
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+
+    slider.addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      const movedPx = Math.abs(e.clientX - pointerStartX);
+      if (movedPx < 4) {
+        const rect = slider.getBoundingClientRect();
+        const clickNorm = clamp((e.clientX - rect.left - rect.height * 0.5) / Math.max(1, rect.width - rect.height), 0, 1);
+        const curStop = Math.round(x * 3);
+        const lensCenterPx = rect.left + rect.height * 0.5 + x * (rect.width - rect.height);
+        if (Math.abs(e.clientX - lensCenterPx) <= rect.height * 0.5) {
+          // Clicked on lens: advance one stop (after winter enters return)
+          if (!isReturn && curStop === 3) {
+            isReturn = true;
+            snapToNearestStop(2);
+          } else if (isReturn && curStop > 0) {
+            snapToNearestStop(curStop - 1);
+          } else {
+            snapToNearestStop(Math.min(3, curStop + 1));
+          }
+        } else {
+          // Clicked on track: snap to closest stop
+          const clickedStop = Math.round(clickNorm * 3);
+          if (!isReturn && curStop === 3 && clickedStop < 3) isReturn = true;
+          snapToNearestStop(clickedStop);
+        }
+      } else {
+        snapToNearestStop();
+      }
+    });
+
+    slider.addEventListener('keydown', (e) => {
+      const curStop = Math.round(targetX * 3);
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (!isReturn && curStop === 3) {
+          isReturn = true;
+          snapToNearestStop(2);
+        } else {
+          snapToNearestStop(Math.min(3, curStop + 1));
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (!isReturn && curStop === 3) isReturn = true;
+        snapToNearestStop(Math.max(0, curStop - 1));
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        isReturn = false;
+        snapToNearestStop(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        isReturn = false;
+        snapToNearestStop(3);
+      }
+    });
+
+    function stepPhysics(dt) {
+      const prevX = x;
+      if (dragging) {
+        x = lerp(x, targetX, 1.0 - Math.exp(-34 * dt));
+        v = (x - prevX) / Math.max(dt, 1e-4);
+        if (Math.abs(v) > 3.4 && fastDragCd <= 0 && !reducedMotion) {
+          fastDragCd = 1.5;
+          catJumpTimer = 0.55;
+          birdsStartled = 1.4;
+        }
+      } else {
+        const omega = reducedMotion ? 16.0 : 9.5;
+        const disp = x - targetX;
+        const acc = -2 * omega * v - omega * omega * disp;
+        v += acc * dt;
+        x += v * dt;
+        if (Math.abs(disp) < 0.0005 && Math.abs(v) < 0.005) {
+          x = targetX; v = 0;
+        }
+      }
+
+      pressAmt = lerp(pressAmt, dragging ? 1 : 0, 1.0 - Math.exp(-14 * dt));
+      if (!reducedMotion) {
+        const targetS = Math.abs(v) * 0.42;
+        const sAcc = 170 * (targetS - stretchS) - 11 * stretchV;
+        stretchV += sAcc * dt;
+        stretchS += stretchV * dt;
+        stretchS = clamp(stretchS, 0, 0.45);
+
+        bounceOffset += bounceVel * dt;
+        bounceVel += (-180 * bounceOffset - 16 * bounceVel) * dt;
+      } else {
+        stretchS = 0; bounceOffset = 0;
+      }
+      if (sealStampOffset > 0) sealStampOffset = Math.max(0, sealStampOffset - dt * 6);
+    }
+
+    drawSeal(0);
+
+    function drawFrame(dt) {
+      stepPhysics(dt);
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = wrap.getBoundingClientRect();
+      const cw = Math.max(10, Math.round(rect.width * dpr));
+      const ch = Math.max(10, Math.round(rect.height * dpr));
+
+      if (glCanvas.width !== cw || glCanvas.height !== ch) {
+        glCanvas.width = cw; glCanvas.height = ch;
+        fbCanvas.width = cw; fbCanvas.height = ch;
+      }
+
+      // Capsule width = compW * 0.90, aspect 4.0, centered in component
+      const capW = cw * 0.90;
+      const capH = capW / 4.0;
+      const shellThick = capH * 0.046;
+      const winH = capH - shellThick * 2;
+      const winW = capW - shellThick * 2;
+
+      // Integer scale k: floor(winH/96), or k+1 if cropped <= 12%
+      let k = Math.max(1, Math.floor(winH / CORE_H));
+      if (((k + 1) * CORE_H - winH) / ((k + 1) * CORE_H) <= 0.12) {
+        k = k + 1;
+      }
+
+      const neededCoreW = Math.max(160, Math.ceil(winW / k));
+      if (neededCoreW !== coreW) {
+        coreW = neededCoreW;
+        fullW = coreW + PAD * 2;
+        idxBuf = new Uint8Array(fullW * fullH);
+        rgbaBuf = new Uint8Array(fullW * fullH * 4);
+      }
+
+      // 4 stop centers C[i] = (winH/2 + i * travel/3) / k
+      const lensTravel = winW - winH;
+      const centers = [0, 1, 2, 3].map(i => Math.round((winH * 0.5 + (i * lensTravel) / 3.0) / k));
+
+      const { nightAmt, flash, isRewinding, sb } = renderWorld(dt, centers);
+
+      // Position 15x51 pixelated red seal at right outer end of capsule, bottom-aligned
+      const capRightCss = (rect.width + (capW / dpr)) * 0.5;
+      const capBottomCss = (rect.height + (capH / dpr)) * 0.5;
+      const kCss = k / dpr;
+      sealCanvas.style.width = `${Math.round(15 * kCss)}px`;
+      sealCanvas.style.height = `${Math.round(51 * kCss)}px`;
+      sealCanvas.style.left = `${Math.round(capRightCss + 4)}px`;
+      sealCanvas.style.top = `${Math.round(capBottomCss - 51 * kCss + sealStampOffset * kCss)}px`;
+      sealCanvas.style.filter = nightAmt > 0.2 ? `brightness(${(1.0 - nightAmt * 0.45).toFixed(2)})` : 'none';
+
+      const lensRad = (winH * 0.5 - capH * 0.032) * (1.0 + pressAmt * 0.012);
+      const lensX = (cw * 0.5 - lensTravel * 0.5) + x * lensTravel + bounceOffset;
+
+      if (!comp) {
+        glCanvas.style.display = 'none';
+        fbCanvas.style.display = 'block';
+        const ctx = fbCanvas.getContext('2d');
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect((cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
+        ctx.clip();
+        const off = document.createElement('canvas');
+        off.width = fullW; off.height = fullH;
+        off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgbaBuf), fullW, fullH), 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(off, (cw - winW)*0.5 - PAD*k, (ch - CORE_H*k)*0.5 - PAD*k, fullW*k, fullH*k);
+        ctx.fillStyle = 'rgba(255,255,255,0.28)';
+        ctx.beginPath();
+        ctx.arc(lensX, ch * 0.5, lensRad, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      const { gl, prog, vao, worldTex, lightTex, surfTex, locs } = comp;
+      gl.viewport(0, 0, cw, ch);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      gl.useProgram(prog);
+      gl.bindVertexArray(vao);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, worldTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fullW, fullH, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgbaBuf);
+      gl.uniform1i(locs.uWorldTex, 0);
+
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, lightTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 144, 44, 0, gl.RGBA, gl.UNSIGNED_BYTE, lightRgba);
+      gl.uniform1i(locs.uLightTex, 1);
+
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, surfTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 48, 48, 0, gl.RGBA, gl.UNSIGNED_BYTE, surfRgba);
+      gl.uniform1i(locs.uSurfTex, 2);
+
+      gl.uniform1f(locs.uHasSurf, 1.0);
+      gl.uniform2f(locs.uCompSize, cw, ch);
+      gl.uniform2f(locs.uCapCenter, cw * 0.5, ch * 0.5);
+      gl.uniform2f(locs.uCapSize, capW, capH);
+      gl.uniform1f(locs.uShellThick, shellThick);
+      gl.uniform1f(locs.uLensX, lensX);
+      gl.uniform1f(locs.uLensRad, lensRad);
+      gl.uniform2f(locs.uLensStretch, 1.0 + 0.2 * stretchS, 1.0 - 0.075 * stretchS);
+      gl.uniform1f(locs.uPress, pressAmt);
+      gl.uniform1f(locs.uDispersion, isRewinding ? 0.075 : 0.05);
+      gl.uniform1f(locs.uNight, nightAmt);
+
+      const dayShell = PAL[IDX.paper[3]];
+      const nightShell = PAL[IDX.ink[1]];
+      gl.uniform3f(locs.uShellDayCol, dayShell[0]/255, dayShell[1]/255, dayShell[2]/255);
+      gl.uniform3f(locs.uShellNightCol, nightShell[0]/255, nightShell[1]/255, nightShell[2]/255);
+
+      const isWinterLanterns = (sb.s0 === 3);
+      gl.uniform3f(locs.uWarmGlowCol, isWinterLanterns ? 0.96 : 1.0, isWinterLanterns ? 0.36 : 0.76, isWinterLanterns ? 0.22 : 0.34);
+      gl.uniform1f(locs.uWarmGlowAmt, 0.85);
+      gl.uniform2f(locs.uWarmCentroid, isWinterLanterns ? 0.85 : (0.15 + x * 0.55), 0.55);
+      gl.uniform1f(locs.uFlash, flash);
+      gl.uniform1f(locs.uK, k);
+      gl.uniform2f(locs.uWinTopLeft, (cw - winW) * 0.5, (ch - CORE_H * k) * 0.5);
+      gl.uniform2f(locs.uWinSize, winW, CORE_H * k);
+      gl.uniform2f(locs.uPad, PAD, PAD);
+      gl.uniform2f(locs.uWorldTexSize, fullW, fullH);
+      gl.uniform1f(locs.uTime, simTime);
+
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+
+    return { drawFrame, getNight: () => {
+      const Y = getAnnualY();
+      if (Y >= 2.75 && Y <= 3.35) {
+        return 0.85 * smoothstep(2.75, 2.98, Y) * (1.0 - smoothstep(3.15, 3.45, Y));
+      }
+      return 0;
+    }};
+  })();
+
+  // =========================================================================
+  // SCENE 3: LIGHT & DARK MORPHING DOT-MATRIX SWITCH
+  // =========================================================================
+  const LightDarkApp = (() => {
+    const canvas = document.getElementById('ldCanvas');
+    const ctx = canvas.getContext('2d');
+    const btn = document.getElementById('ldBtn');
+
+    // Support URL param ?t=0..1
+    const urlT = parseFloat(new URLSearchParams(window.location.search).get('t'));
+    let t = !Number.isNaN(urlT) ? clamp(urlT, 0, 1) : 0;
+    let v = 0;
+    let targetT = t >= 0.5 ? 1 : 0;
+    if (!Number.isNaN(urlT)) targetT = t;
+    let dragging = false;
+    let pointerStartX = 0;
+    let dragStartT = t;
+    let simTime = 0;
+
+    // Multi-stop OKLab color ramps (Night -> Day)
+    const STOPS = {
+      bg:      ['#0E1016', '#3A3C44', '#8D8E93', '#E7E5E1'],
+      track:   ['#06070B', '#2A2C33', '#7E8086', '#E2DFDA'],
+      rim:     ['#8E9BFF', '#C9C4FF', '#FFFFFF', '#FFE2B0', '#FFB140'],
+      dots:    ['#F4F6FF', '#E9ECF7', '#B9B3AA', '#5A4632'],
+      knobTop: ['#3A3E4E', '#7A7E8E', '#C8C8CE', '#FFFFFF'],
+      knobBot: ['#20222C', '#585B68', '#A8A8AE', '#F2EFEA']
+    };
+
+    function sampleRamp(rampHex, u) {
+      const scaled = clamp(u, 0, 1) * (rampHex.length - 1);
+      const i0 = Math.floor(scaled);
+      const i1 = Math.min(rampHex.length - 1, i0 + 1);
+      return mixOklabHex(rampHex[i0], rampHex[i1], scaled - i0);
+    }
+
+    function sampleRampRgb(rampHex, u) {
+      const scaled = clamp(u, 0, 1) * (rampHex.length - 1);
+      const i0 = Math.floor(scaled);
+      const i1 = Math.min(rampHex.length - 1, i0 + 1);
+      const c1 = rgbToOklab(...hexToRgb01(rampHex[i0]));
+      const c2 = rgbToOklab(...hexToRgb01(rampHex[i1]));
+      const f = scaled - i0;
+      const rgb = oklabGamutSrgb(lerp(c1[0], c2[0], f), lerp(c1[1], c2[1], f), lerp(c1[2], c2[2], f));
+      return [Math.round(rgb[0]*255), Math.round(rgb[1]*255), Math.round(rgb[2]*255)];
+    }
+
+    // Build 15x15 Moon & Sun dot sets paired by angle around center (7,7)
+    const moonDots = [];
+    const darkMoonDots = [];
+    const starDots = [
+      { gx: 12.5, gy: 1.5, baseA: 1.0, phase: 0.0 },
+      { gx: 11.5, gy: 1.5, baseA: 0.6, phase: 1.2 },
+      { gx: 13.5, gy: 1.5, baseA: 0.6, phase: 2.4 },
+      { gx: 12.5, gy: 0.5, baseA: 0.6, phase: 3.6 },
+      { gx: 12.5, gy: 2.5, baseA: 0.6, phase: 4.8 }
+    ];
+
+    for (let gy = 0; gy < 15; gy++) {
+      for (let gx = 0; gx < 15; gx++) {
+        const dMain = Math.hypot(gx - 6.6, gy - 7.4);
+        const dCut = Math.hypot(gx - 9.2, gy - 5.0);
+        if (dMain <= 5.6) {
+          if (dCut > 4.9) {
+            moonDots.push({ gx, gy, ang: Math.atan2(gy - 7, gx - 7) });
+          } else {
+            darkMoonDots.push({ gx, gy });
+          }
+        }
+      }
+    }
+
+    const sunDots = [];
+    for (let gy = 0; gy < 15; gy++) {
+      for (let gx = 0; gx < 15; gx++) {
+        if (Math.hypot(gx - 7, gy - 7) <= 3.3) {
+          sunDots.push({ gx, gy, ang: Math.atan2(gy - 7, gx - 7) });
+        }
+      }
+    }
+    // 8 Sun Rays: 4 cardinal (2 dots each from r=4.9) + 4 diagonal (1 dot each at r=4.6)
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx, dy]) => {
+      [4.9, 6.1].forEach(r => {
+        const gx = 7 + dx * r, gy = 7 + dy * r;
+        sunDots.push({ gx, gy, ang: Math.atan2(gy - 7, gx - 7) });
+      });
+    });
+    const invSqrt2 = 1 / Math.SQRT2;
+    [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(([dx, dy]) => {
+      const gx = 7 + dx * 4.6 * invSqrt2, gy = 7 + dy * 4.6 * invSqrt2;
+      sunDots.push({ gx, gy, ang: Math.atan2(gy - 7, gx - 7) });
+    });
+
+    moonDots.sort((a, b) => a.ang - b.ang);
+    sunDots.sort((a, b) => a.ang - b.ang);
+
+    const maxDots = Math.max(moonDots.length, sunDots.length);
+    const pairedParticles = [];
+    for (let i = 0; i < maxDots; i++) {
+      const mIdx = Math.floor((i / maxDots) * moonDots.length);
+      const sIdx = Math.floor((i / maxDots) * sunDots.length);
+      const m = moonDots[mIdx];
+      const s = sunDots[sIdx];
+      const h1 = ((i * 73 + 19) & 255) / 255;
+      const h2 = ((i * 137 + 41) & 255) / 255;
+      pairedParticles.push({
+        mx: m.gx, my: m.gy,
+        sx: s.gx, sy: s.gy,
+        delay: h1 * 0.25,
+        rotScale: 0.6 + h2 * 0.8,
+        jitterX: (h1 - 0.5) * 4.4,
+        jitterY: (h2 - 0.5) * 4.4,
+        fadeMode: i >= moonDots.length ? 'in' : (i >= sunDots.length ? 'out' : 'both')
+      });
+    }
+
+    // Perimeter point helper for rounded rectangle (clockwise from top-center u=0..1)
+    function getRoundedRectPoint(x, y, w, h, r, u) {
+      u = ((u % 1) + 1) % 1;
+      const straightW = w - 2 * r;
+      const straightH = h - 2 * r;
+      const arcLen = 0.5 * Math.PI * r;
+      const perim = 2 * straightW + 2 * straightH + 4 * arcLen;
+      let d = u * perim;
+
+      // 1. Top-right half
+      if (d < straightW * 0.5) return [x + w * 0.5 + d, y];
+      d -= straightW * 0.5;
+      // 2. Top-right corner
+      if (d < arcLen) {
+        const a = -Math.PI * 0.5 + (d / arcLen) * (Math.PI * 0.5);
+        return [x + w - r + Math.cos(a) * r, y + r + Math.sin(a) * r];
+      }
+      d -= arcLen;
+      // 3. Right edge
+      if (d < straightH) return [x + w, y + r + d];
+      d -= straightH;
+      // 4. Bottom-right corner
+      if (d < arcLen) {
+        const a = (d / arcLen) * (Math.PI * 0.5);
+        return [x + w - r + Math.cos(a) * r, y + h - r + Math.sin(a) * r];
+      }
+      d -= arcLen;
+      // 5. Bottom edge
+      if (d < straightW) return [x + w - r - d, y + h];
+      d -= straightW;
+      // 6. Bottom-left corner
+      if (d < arcLen) {
+        const a = Math.PI * 0.5 + (d / arcLen) * (Math.PI * 0.5);
+        return [x + r + Math.cos(a) * r, y + h - r + Math.sin(a) * r];
+      }
+      d -= arcLen;
+      // 7. Left edge
+      if (d < straightH) return [x, y + h - r - d];
+      d -= straightH;
+      // 8. Top-left corner
+      if (d < arcLen) {
+        const a = Math.PI + (d / arcLen) * (Math.PI * 0.5);
+        return [x + r + Math.cos(a) * r, y + r + Math.sin(a) * r];
+      }
+      d -= arcLen;
+      // 9. Top-left half
+      return [x + r + d, y];
+    }
+
+    function toggleState(forceVal) {
+      targetT = forceVal !== undefined ? forceVal : (targetT < 0.5 ? 1 : 0);
+      btn.setAttribute('aria-checked', targetT === 1 ? 'true' : 'false');
+      announce(targetT === 1 ? '浅色' : '深色');
+      btn.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      btn.setPointerCapture(e.pointerId);
+      dragging = true;
+      pointerStartX = e.clientX;
+      dragStartT = t;
+    });
+
+    btn.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = (e.clientX - pointerStartX) / 156;
+      t = clamp(dragStartT + dx, 0, 1);
+      v = dx * 10;
+    });
+
+    btn.addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      if (Math.abs(e.clientX - pointerStartX) < 4) {
+        toggleState();
+      } else {
+        const dest = (t + clamp(v, -3, 3) * 0.06 >= 0.5) ? 1 : 0;
+        toggleState(dest);
+      }
+    });
+
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        toggleState();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        toggleState(1);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        toggleState(0);
+      }
+    });
+
+    function drawFrame(dt) {
+      simTime += dt;
+      if (!dragging) {
+        const omega = reducedMotion ? 30.0 : 10.0;
+        const disp = t - targetT;
+        const acc = -2 * omega * v - omega * omega * disp;
+        v += acc * dt;
+        t += v * dt;
+        if (Math.abs(disp) < 0.0004 && Math.abs(v) < 0.004) {
+          t = targetT; v = 0;
+        }
+      }
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      if (canvas.width !== 440 * dpr || canvas.height !== 280 * dpr) {
+        canvas.width = 440 * dpr;
+        canvas.height = 280 * dpr;
+      }
+
+      const bgCss = sampleRamp(STOPS.bg, t);
+      stage.style.backgroundColor = bgCss;
+      stage.style.setProperty('--night', (1.0 - t).toFixed(3));
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, 440, 280);
+
+      const tx = 60, ty = 58, tw = 320, th = 164, tr = 58;
+      const knobSize = 140, knobR = 46, travel = 156;
+      const kx = tx + 12 + t * travel;
+      const ky = ty + 12;
+
+      const rimRgb = sampleRampRgb(STOPS.rim, t);
+      const rimCss = `rgb(${rimRgb[0]}, ${rimRgb[1]}, ${rimRgb[2]})`;
+
+      // 1. Track Outer Drop Shadow
+      ctx.save();
+      ctx.shadowColor = `rgba(0, 0, 0, ${lerp(0.55, 0.12, t).toFixed(2)})`;
+      ctx.shadowBlur = 26;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = sampleRamp(STOPS.track, t);
+      ctx.beginPath();
+      ctx.roundRect(tx, ty, tw, th, tr);
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Track Recessed Inner Shadow & Rim Light Bounce on Track Floor
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(tx, ty, tw, th, tr);
+      ctx.clip();
+
+      // Rim light reflection on track floor (bottom-left at night -> top-right at day)
+      const bounceX = lerp(kx + 24, kx + knobSize - 24, t);
+      const bounceY = lerp(ky + knobSize - 16, ky + 16, t);
+      const bounceGrad = ctx.createRadialGradient(bounceX, bounceY, 4, bounceX, bounceY, 95);
+      bounceGrad.addColorStop(0, `rgba(${rimRgb[0]}, ${rimRgb[1]}, ${rimRgb[2]}, ${lerp(0.45, 0.35, t).toFixed(2)})`);
+      bounceGrad.addColorStop(1, `rgba(${rimRgb[0]}, ${rimRgb[1]}, ${rimRgb[2]}, 0)`);
+      ctx.fillStyle = bounceGrad;
+      ctx.fillRect(tx, ty, tw, th);
+
+      // Thick inner shadow stroke
+      ctx.strokeStyle = `rgba(0, 0, 0, ${lerp(0.85, 0.22, t).toFixed(2)})`;
+      ctx.lineWidth = 10;
+      ctx.shadowColor = `rgba(0, 0, 0, ${lerp(0.85, 0.22, t).toFixed(2)})`;
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 3;
+      ctx.beginPath();
+      ctx.roundRect(tx - 3, ty - 3, tw + 6, th + 6, tr + 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Track 1px crisp highlight edge
+      ctx.strokeStyle = `rgba(255, 255, 255, ${lerp(0.06, 0.55, t).toFixed(2)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(tx + 0.5, ty + 0.5, tw - 1, th - 1, tr);
+      ctx.stroke();
+
+      // 3. Frosted Glass Knob
+      ctx.save();
+      ctx.shadowColor = `rgba(0, 0, 0, ${lerp(0.55, 0.16, t).toFixed(2)})`;
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 6;
+      const knobGrad = ctx.createLinearGradient(0, ky, 0, ky + knobSize);
+      knobGrad.addColorStop(0, sampleRamp(STOPS.knobTop, t));
+      knobGrad.addColorStop(1, sampleRamp(STOPS.knobBot, t));
+      ctx.fillStyle = knobGrad;
+      ctx.beginPath();
+      ctx.roundRect(kx, ky, knobSize, knobSize, knobR);
+      ctx.fill();
+      ctx.restore();
+
+      // Knob interior tinted rim glow + upper white sheen
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(kx, ky, knobSize, knobSize, knobR);
+      ctx.clip();
+
+      const innerGlowX = lerp(kx + 22, kx + knobSize - 22, t);
+      const innerGlowY = lerp(ky + knobSize - 22, ky + 22, t);
+      const innerGlow = ctx.createRadialGradient(innerGlowX, innerGlowY, 2, innerGlowX, innerGlowY, 82);
+      innerGlow.addColorStop(0, `rgba(${rimRgb[0]}, ${rimRgb[1]}, ${rimRgb[2]}, 0.34)`);
+      innerGlow.addColorStop(1, `rgba(${rimRgb[0]}, ${rimRgb[1]}, ${rimRgb[2]}, 0)`);
+      ctx.fillStyle = innerGlow;
+      ctx.fillRect(kx, ky, knobSize, knobSize);
+
+      const sheenGrad = ctx.createLinearGradient(0, ky, 0, ky + knobSize * 0.55);
+      sheenGrad.addColorStop(0, `rgba(255, 255, 255, ${lerp(0.10, 0.65, t).toFixed(2)})`);
+      sheenGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = sheenGrad;
+      ctx.fillRect(kx, ky, knobSize, knobSize * 0.55);
+      ctx.restore();
+
+      // Knob 1px specular border
+      ctx.strokeStyle = `rgba(255, 255, 255, ${lerp(0.14, 0.90, t).toFixed(2)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(kx + 0.5, ky + 0.5, knobSize - 1, knobSize - 1, knobR);
+      ctx.stroke();
+
+      // 4. Traveling Gaussian Edge Rim Light (u0 = 0.60 + 0.53 * ease(t))
+      const easeT = smoothstep(0, 1, t);
+      const u0 = 0.60 + 0.53 * easeT;
+      const halfSpan = lerp(0.22, 0.19, t);
+      const segs = 90;
+
+      ctx.save();
+      if (t < 0.6) ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+
+      for (let pass = 0; pass < 2; pass++) {
+        for (let s = 0; s < segs; s++) {
+          const fNorm = -1 + (2 * (s + 0.5)) / segs; // -1..1
+          const gauss = Math.exp(-2.6 * fNorm * fNorm);
+          if (gauss < 0.03) continue;
+
+          const uA = u0 + (-1 + (2 * s) / segs) * halfSpan;
+          const uB = u0 + (-1 + (2 * (s + 1)) / segs) * halfSpan;
+          const pA = getRoundedRectPoint(kx - 1.5, ky - 1.5, knobSize + 3, knobSize + 3, knobR + 1.5, uA);
+          const pB = getRoundedRectPoint(kx - 1.5, ky - 1.5, knobSize + 3, knobSize + 3, knobR + 1.5, uB);
+
+          ctx.beginPath();
+          ctx.moveTo(pA[0], pA[1]);
+          ctx.lineTo(pB[0], pB[1]);
+
+          if (pass === 0) {
+            ctx.strokeStyle = rimCss;
+            ctx.globalAlpha = gauss * 0.85;
+            ctx.lineWidth = 4.2;
+            ctx.shadowColor = rimCss;
+            ctx.shadowBlur = 26;
+          } else {
+            ctx.strokeStyle = '#ffffff';
+            ctx.globalAlpha = gauss * lerp(0.90, 0.55, t);
+            ctx.lineWidth = 2.2;
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 8;
+          }
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      // 5. 15x15 Dot-Matrix Moon <-> Sun Morphing Particles
+      const gridStep = 5.6;
+      const dotSize = 4.3;
+      const gridOriginX = kx + knobSize * 0.5 - 7 * gridStep;
+      const gridOriginY = ky + knobSize * 0.5 - 7 * gridStep;
+      const dotRgb = sampleRampRgb(STOPS.dots, t);
+
+      ctx.save();
+      if (t < 0.6) {
+        ctx.shadowColor = 'rgba(225, 235, 255, 0.75)';
+        ctx.shadowBlur = 5 * (1.0 - t / 0.6);
+      }
+
+      // Faint dark moon interior dots (fade out as t increases)
+      if (t < 0.45) {
+        const darkAlpha = 0.16 * (1.0 - t / 0.45);
+        ctx.fillStyle = `rgba(${dotRgb[0]}, ${dotRgb[1]}, ${dotRgb[2]}, ${darkAlpha.toFixed(3)})`;
+        for (const dm of darkMoonDots) {
+          ctx.fillRect(
+            gridOriginX + dm.gx * gridStep - dotSize * 0.5,
+            gridOriginY + dm.gy * gridStep - dotSize * 0.5,
+            dotSize, dotSize
+          );
+        }
+
+        // Twinkling cross star at (12.5, 1.5)
+        for (const st of starDots) {
+          const twinkle = reducedMotion ? 1.0 : (0.72 + 0.28 * Math.sin(simTime * 3.5 + st.phase));
+          const sa = st.baseA * twinkle * (1.0 - t / 0.45);
+          ctx.fillStyle = `rgba(${dotRgb[0]}, ${dotRgb[1]}, ${dotRgb[2]}, ${sa.toFixed(3)})`;
+          ctx.fillRect(
+            gridOriginX + st.gx * gridStep - dotSize * 0.5,
+            gridOriginY + st.gy * gridStep - dotSize * 0.5,
+            dotSize, dotSize
+          );
+        }
+      }
+
+      // Morphing particles
+      const sinPiT = Math.sin(Math.PI * t);
+      for (const p of pairedParticles) {
+        const localT = clamp((t - p.delay) / (1.0 - p.delay), 0, 1);
+        const smoothP = smoothstep(0, 1, localT);
+
+        let gx = lerp(p.mx, p.sx, smoothP);
+        let gy = lerp(p.my, p.sy, smoothP);
+
+        // Rotational swirl + random offset at mid-transition
+        const ang = sinPiT * 1.1 * p.rotScale;
+        const dx = gx - 7, dy = gy - 7;
+        gx = 7 + dx * Math.cos(ang) - dy * Math.sin(ang) + sinPiT * p.jitterX;
+        gy = 7 + dx * Math.sin(ang) + dy * Math.cos(ang) + sinPiT * p.jitterY;
+
+        let alpha = 1.0;
+        if (p.fadeMode === 'in') alpha = smoothP;
+        else if (p.fadeMode === 'out') alpha = 1.0 - smoothP;
+
+        const scale = 1.0 - 0.15 * sinPiT;
+        const sz = dotSize * scale;
+
+        ctx.fillStyle = `rgba(${dotRgb[0]}, ${dotRgb[1]}, ${dotRgb[2]}, ${alpha.toFixed(3)})`;
+        ctx.fillRect(
+          gridOriginX + gx * gridStep - sz * 0.5,
+          gridOriginY + gy * gridStep - sz * 0.5,
+          sz, sz
+        );
+      }
+
+      ctx.restore();
+      ctx.restore();
+    }
+
+    return { drawFrame, getNight: () => 1.0 - t };
+  })();
+
+  // =========================================================================
+  // Tab Switching, Visibility Pause & Unified Render Loop
+  // =========================================================================
+  let activeTab = 'lujiazui';
+  const navBar = document.getElementById('navBar');
+  const panels = {
+    lujiazui: document.getElementById('panel-lujiazui'),
+    beijing: document.getElementById('panel-beijing'),
+    lightdark: document.getElementById('panel-lightdark')
+  };
+
+  document.querySelectorAll('.nav-pill[data-tab]').forEach(pill => {
+    pill.addEventListener('click', () => {
+      activeTab = pill.dataset.tab;
+      document.querySelectorAll('.nav-pill[data-tab]').forEach(p => p.classList.toggle('active', p === pill));
+      Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === activeTab));
+    });
+  });
+
+  document.getElementById('hideNavBtn').addEventListener('click', () => {
+    navBar.classList.add('hidden');
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'h' || e.key === 'H') {
+      navBar.classList.toggle('hidden');
+    }
+  });
+
+  let paused = false;
+  document.addEventListener('visibilitychange', () => {
+    paused = document.hidden;
+  });
+
+  let lastNow = performance.now();
+  function tick(now) {
+    const dt = Math.min((now - lastNow) * 0.001, 0.05);
+    lastNow = now;
+
+    if (!paused) {
+      if (activeTab === 'lujiazui') LujiazuiApp.drawFrame(dt);
+      else if (activeTab === 'beijing') BeijingApp.drawFrame(dt);
+      else LightDarkApp.drawFrame(dt);
+    }
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
