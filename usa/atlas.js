@@ -52,10 +52,19 @@ function sky(){
       rect(x+8,y+2,12+random()*26,1,alaska?'#8987a2':'#bc8188');
     }
   }
-  const cx=254,cy=30,r=state.night?9:15;
-  for(let y=-r;y<=r;y++){
-    const half=Math.floor(Math.sqrt(r*r-y*y));
-    rect(cx-half,cy+y,half*2+1,1,state.night?'#e0efdf':y<4?'#fff1bb':'#ffc287');
+}
+function celestialBody(lightLevel){
+  const phase=smooth((lightLevel-.34)/.66);
+  const radius=lerp(15,10,phase);
+  const cx=254,cy=30;
+  const tint=phase;
+  for(let row=-Math.floor(radius);row<=Math.floor(radius);row++){
+    const right=Math.sqrt(radius*radius-row*row);
+    // The lit edge stays on the right as the daylight disk narrows to a crescent.
+    const left=lerp(-right,right*.23,phase);
+    const color=mix(row<4?0xfff1bb:0xffc287,row<1?0xf0f6ed:0xbdd1e6,tint);
+    const first=Math.ceil(left),last=Math.floor(right);
+    if(first<=last) rect(cx+first,cy+row,last-first+1,1,color);
   }
 }
 function aurora(time){
@@ -1083,6 +1092,7 @@ const cycle=$('#cycle');
 const season=$('#season');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let paused=reduced.matches, automatic=true, frame=0, elapsed=0, last=null, vegasDisplayStart=0;
+let lightLevel=.15;
 const layers=[canvas,nightCanvas].map(target=>{
   const buffer=document.createElement('canvas');
   buffer.width=target.width;
@@ -1123,6 +1133,7 @@ function draw(){
     ctx.setTransform(1,0,0,1,0,0);
     ctx.drawImage(layer.buffer,0,0);
     ctx.setTransform(2,0,0,2,0,layer.offset);
+    celestialBody(lightLevel);
     if(state.region==='ny'){
       const trainX=trainPosition(time);
       cityWarning(time);
@@ -1204,12 +1215,16 @@ function updateCycle(){
     prepare();
   }
   const lightAmount=time<6 ? Math.sin(Math.PI*time/12)**2 : Math.cos(Math.PI*time/6)**2;
-  const glow=.15+.82*lightAmount;
-  light.value=String(Math.round(glow*100));
-  stage.style.setProperty('--light',glow);
+  lightLevel=.15+.85*lightAmount;
+  light.value=String(Math.round(lightLevel*100));
+  stage.style.setProperty('--light',lightLevel);
 }
 cycle.addEventListener('click',()=>setAutomatic(!automatic));
-function setLight(){stage.style.setProperty('--light',Number(light.value)/100)}
+function setLight(){
+  lightLevel=Number(light.value)/100;
+  stage.style.setProperty('--light',lightLevel);
+  draw();
+}
 light.addEventListener('input',()=>{setAutomatic(false);setLight()});
 season.addEventListener('change',event=>{
   setAutomatic(false);
