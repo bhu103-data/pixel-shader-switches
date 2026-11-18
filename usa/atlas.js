@@ -506,20 +506,105 @@ function vegasLandscape(){
   line(283,101,265,67,night?'#657494':'#94778b');
 }
 
-function vegasMotion(time,night){
-  const palette=night?[0xdd75b4,0xbb7aff,0x77dbe8]:[0xcf7d9c,0x9875aa,0x7cabca];
-  const sphereX=213,sphereY=80,radius=22;
-  const low=mix(palette[1],0x2b2446,.6);
-  for(let row=-radius;row<=radius;row+=2){
-    const half=Math.floor(Math.sqrt(radius*radius-row*row));
-    rect(sphereX-half,sphereY+row,2*half+1,2,low);
-    for(let x=-half;x<=half;x+=2){
-      const band=.5+.5*Math.sin(x*.25+row*.34-time*1.65);
-      const color=mix(palette[0],palette[2],band);
-      rect(sphereX+x,sphereY+row,1,1,color);
-    }
+function sphereOval(x,y,rx,ry,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
+  ctx.fill();
+}
+
+function sphereSurface(colors){
+  const gradient=ctx.createRadialGradient(-9,-11,2,1,3,30);
+  colors.forEach(([stop,color])=>gradient.addColorStop(stop,color));
+  ctx.fillStyle=gradient;
+  ctx.fillRect(-27,-26,54,52);
+}
+
+function sphereSmiley(time,night){
+  sphereSurface(night?[[0,'#fff291'],[.56,'#ffd34a'],[1,'#cc702b']]:[[0,'#ffeb99'],[.56,'#f9c952'],[1,'#c07a42']]);
+  const ink='#522929';
+  const blink=Math.max(0,1-Math.abs(time-2.25)/.24);
+  const wink=Math.max(0,1-Math.abs(time-4.35)/.42);
+  const look=Math.sin(time*.72)*1.65;
+  for(const side of [-1,1]){
+    const closing=side>0?Math.max(wink,blink):blink;
+    const x=side*8+look;
+    sphereOval(x,-5,2.85,Math.max(.68,4.25*(1-closing)),ink);
+    if(closing<.25) sphereOval(x-.65,-6.25,.78,.9,'#fff4c7');
   }
-  rect(195,102,36,2,night?'#a577d2':'#84668a');
+  sphereOval(-15,2,3.2,1.45,'#ee9b56');
+  sphereOval(15,2,3.2,1.45,'#ee9b56');
+  const depth=12+Math.sin(time*1.3)*1.2+wink*2;
+  ctx.fillStyle=ink;
+  ctx.beginPath();
+  ctx.moveTo(-11,3);
+  ctx.quadraticCurveTo(look,7.5,11,3);
+  ctx.quadraticCurveTo(9,depth,0,depth+.3);
+  ctx.quadraticCurveTo(-9,depth,-11,3);
+  ctx.fill();
+  ctx.fillStyle='#fff1c0';
+  ctx.beginPath();
+  ctx.moveTo(-8.2,4.5);
+  ctx.quadraticCurveTo(0,7,8.3,4.5);
+  ctx.quadraticCurveTo(6.6,7.8,0,8.2);
+  ctx.quadraticCurveTo(-6,8,-8.2,4.5);
+  ctx.fill();
+}
+
+const moonCraters=[
+  [-17,-10,3.4,2.9],[-10,-15,5.7,4.3],[-4,-6,4.6,3.4],[4,-13,2.8,2.2],[10,-9,5.8,4.6],
+  [13,0,3.6,3],[-16,4,5.2,3.6],[-6,7,2.8,2.2],[2,4,5.2,4.3],[9,11,4,2.7],[-9,15,4,2.5],[0,18,2.4,2]
+];
+function sphereMoon(time,night){
+  sphereSurface(night?[[0,'#f1f4ed'],[.55,'#c5cedc'],[1,'#576985']]:[[0,'#e0ded8'],[.55,'#bbc2cf'],[1,'#6c6a82']]);
+  const drift=Math.sin(time*.54)*2.3;
+  for(const [x,y,rx,ry] of moonCraters){
+    sphereOval(x+drift,y,rx,ry,'#8b9bb4');
+    sphereOval(x+drift+.6,y-ry*.2,rx*.72,ry*.55,'#a7b2c3');
+  }
+}
+
+function sphereBasketball(time,night){
+  sphereSurface(night?[[0,'#ffcc72'],[.57,'#e78645'],[1,'#8e4434']]:[[0,'#ffc17b'],[.57,'#d88250'],[1,'#925042']]);
+  ctx.save();
+  ctx.rotate((time-11)*.25);
+  ctx.beginPath();
+  ctx.moveTo(-27,0);ctx.lineTo(27,0);
+  ctx.moveTo(0,-27);ctx.lineTo(0,27);
+  ctx.moveTo(-17,-19);ctx.bezierCurveTo(-7,-8,-7,9,-17,19);
+  ctx.moveTo(17,-19);ctx.bezierCurveTo(7,-8,7,9,17,19);
+  ctx.strokeStyle='#553335';
+  ctx.lineWidth=1.65;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function vegasSphere(elapsed,night){
+  const phase=elapsed%29;
+  const time=phase<=14.5?phase:29-phase;
+  ctx.save();
+  ctx.translate(211,78);
+  ctx.beginPath();
+  ctx.ellipse(0,0,25,24,0,0,Math.PI*2);
+  ctx.clip();
+  if(time<7.1) sphereSmiley(time,night);
+  if(time>=6.1 && time<11.55){
+    ctx.globalAlpha=smooth((time-6.1)/1);
+    sphereMoon(time,night);
+  }
+  if(time>=10.55){
+    ctx.globalAlpha=smooth((time-10.55)/1);
+    sphereBasketball(time,night);
+  }
+  // Subtle LED spacing keeps the image part of the pixel skyline.
+  ctx.globalAlpha=night ? .15 : .12;
+  for(let y=-24;y<24;y+=2) for(let x=-25;x<25;x+=2) rect(x+(y%4===0?0:1),y,1,1,'#2c2949');
+  ctx.restore();
+  rect(190,102,42,2,night?'#a577d2':'#84668a');
+}
+
+function vegasMotion(time,night,displayTime){
+  vegasSphere(displayTime,night);
   const wheelX=267,wheelY=66,wheelR=23;
   const rotation=time*.28;
   for(let i=0;i<72;i++){
@@ -560,7 +645,7 @@ function vegasMotion(time,night){
 const regions={
   ny:{name:'New York',description:'New York skyline with the Statue of Liberty, Brooklyn Bridge, Central Park, Times Square, an elevated train, four Elementals, Iron Spider, and Mysterio.',landscape:nyLandscape,horizon:'#293247'},
   ak:{name:'Alaska',description:'Alaska with snowy peaks, a glacial fjord, a cabin in the woods, a moose, and a brown bear.',landscape:alaskaLandscape,horizon:'#20323e'},
-  lv:{name:'Las Vegas',description:'A desert skyline with the neon Las Vegas Strip, animated fountains, the Sphere, and the High Roller observation wheel.',landscape:vegasLandscape,horizon:'#1c1d33'}
+  lv:{name:'Las Vegas',description:'A desert skyline with the neon Las Vegas Strip, animated fountains, the High Roller observation wheel, and the Sphere cycling between a yellow smiley, the Moon, and a basketball.',landscape:vegasLandscape,horizon:'#1c1d33'}
 };
 
 const chase = [
@@ -997,7 +1082,7 @@ const fullscreen=$('#fullscreen');
 const cycle=$('#cycle');
 const season=$('#season');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-let paused=reduced.matches, automatic=true, frame=0, elapsed=0, last=null;
+let paused=reduced.matches, automatic=true, frame=0, elapsed=0, last=null, vegasDisplayStart=0;
 const layers=[canvas,nightCanvas].map(target=>{
   const buffer=document.createElement('canvas');
   buffer.width=target.width;
@@ -1053,7 +1138,7 @@ function draw(){
     }else if(state.region==='ak'){
       alaskaMotion(time,index===1);
       smallFish(time,index===1);
-    }else vegasMotion(time,index===1);
+    }else vegasMotion(time,index===1,elapsed-vegasDisplayStart);
     if(state.season===3 && state.region!=='lv'){
       for(const [x,y,speed,phase] of flakes) {
         const size=speed>18?2:1;
@@ -1095,6 +1180,7 @@ $('nav').addEventListener('click',event=>{
   const place=event.target.closest('[data-region]')?.dataset.region;
   if(!Object.hasOwn(regions,place) || state.region===place) return;
   state.region=place;
+  if(place==='lv') vegasDisplayStart=elapsed;
   render();
 });
 const light=$('#light');
