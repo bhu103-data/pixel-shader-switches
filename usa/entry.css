@@ -1,0 +1,26 @@
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:#121827;color:#f6f3e7;font:1rem/1.5 system-ui,"PingFang SC","Microsoft YaHei",sans-serif}
+.entry{min-height:100svh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 14% 28%,#9c556466,transparent 50%),radial-gradient(ellipse at 90% 78%,#28685870,transparent 48%),#121827}
+.panel{width:min(100%,430px);padding:clamp(18px,5vw,32px);background:#171e30;border:1px solid #94a4c244;border-radius:18px;box-shadow:0 16px 55px #070a13ad}
+.brand{color:#efc485;font:700 .88rem ui-monospace,monospace;letter-spacing:.22em;margin:0 0 .55rem}
+h1{margin:0;font-size:clamp(1.7rem,6vw,2.25rem);line-height:1.15}
+header p:last-child{margin:.5rem 0 1.45rem;color:#d0d4e2}
+button,input,a{font:inherit}
+button,a{min-height:42px;padding:8px 12px;border-radius:8px;border:1px solid #9aa9c34b;color:inherit;background:#232d43}
+button{cursor:pointer}
+button:disabled,input:disabled{cursor:default;opacity:.57}
+a{text-decoration:none;display:grid;place-items:center;text-align:center}
+.choices{display:flex;gap:8px;margin-bottom:12px}
+.choices button{flex:1}
+.choices [aria-pressed=true]{background:#f5e6cd;color:#202638;font-weight:700}
+.methods [aria-pressed=true]{background:#34425c;color:#fff4df;border-color:#dba777}
+label{font-size:.92rem;display:block;margin-bottom:6px}
+input{width:100%;min-height:44px;padding:8px 11px;border-radius:8px;border:1px solid #9aa9c36e;background:#101626;color:#fff;caret-color:#f7cb90}
+.primary{width:100%;margin-top:12px;background:#edbc88;border-color:#edbc88;color:#202638;font-weight:700}
+#change,#logout{margin-top:8px;width:100%}
+#status{min-height:1.5em;margin:.9rem 0;color:#d0d4e2;font-size:.9rem}
+.guest{background:transparent;border-color:#9aa9c380;font-weight:650;display:flex;justify-content:center;align-items:center;gap:8px}
+.guest span{font:500 .85rem ui-monospace,monospace;color:#d7b993}
+:focus-visible{outline:2px solid #ffd99f;outline-offset:3px}
+@media(max-width:390px){.entry{padding:12px}.panel{border-radius:12px}}

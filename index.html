@@ -39,6 +39,12 @@
   }
   #navBar:hover { opacity: 1; }
   #navBar.hidden { display: none; }
+  .usa-link {
+    position: absolute; z-index: 39; right: 12px; bottom: 12px;
+    padding: 6px 11px; border-radius: 999px; background: #202434;
+    color: #fff; text-decoration: none; font-size: 13px;
+  }
+  .usa-link:focus-visible { outline: 2px solid #ffa84e; outline-offset: 3px; }
   .nav-pill {
     border: none; background: transparent; color: rgba(255,255,255,0.78);
     font-size: 12px; padding: 5px 12px; border-radius: 999px; cursor: pointer;
@@ -132,6 +138,7 @@
 </head>
 <body>
 <div id="stage">
+  <a class="usa-link" href="./usa/">纽约与阿拉斯加</a>
   <div id="navBar" title="按 H 键可隐藏切换栏">
     <button class="nav-pill active" data-tab="lujiazui">01 · 陆家嘴专注开关</button>
     <button class="nav-pill" data-tab="beijing">02 · 北京四季卷轴</button>

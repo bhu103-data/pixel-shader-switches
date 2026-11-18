@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="登录或以访客身份探索纽约与阿拉斯加像素地景。">
+<title>登录 · 像素地景</title>
+<link rel="stylesheet" href="./entry.css">
+<script type="module" src="./auth.js"></script>
+</head>
+<body>
+<main class="entry">
+ <div class="panel">
+  <header>
+   <p class="brand">PIXEL ATLAS</p>
+   <h1>走进像素地景</h1>
+   <p>纽约与阿拉斯加</p>
+  </header>
+  <section id="auth" aria-label="账户">
+   <div class="choices" role="group" aria-label="账户操作">
+    <button type="button" data-mode="login" aria-pressed="true">登录</button>
+    <button type="button" data-mode="register" aria-pressed="false">注册</button>
+   </div>
+   <div class="choices methods" role="group" aria-label="验证方式">
+    <button type="button" data-method="email" aria-pressed="true">邮箱</button>
+    <button type="button" data-method="phone" aria-pressed="false">手机号</button>
+   </div>
+   <form id="request-code">
+    <label for="identity" id="identity-label">邮箱</label>
+    <input id="identity" type="email" autocomplete="email" placeholder="name@example.com" required disabled>
+    <button id="send" type="submit" class="primary" disabled>发送验证码</button>
+   </form>
+   <form id="verify-code" hidden>
+    <label for="code">验证码</label>
+    <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" maxlength="8" required>
+    <button id="confirm" type="submit" class="primary">验证并进入</button>
+    <button type="button" id="change">返回重填</button>
+   </form>
+  </section>
+  <section id="signed-in" aria-label="已登录账户" hidden>
+   <p>你已登录。</p>
+   <a class="primary" href="./scene.html">进入像素地景</a>
+   <button type="button" id="logout">退出登录</button>
+  </section>
+  <p id="status" role="status">账户服务暂未连接，可先以访客身份体验。</p>
+  <a id="guest" class="guest" href="./scene.html">以访客身份进入 <span lang="en">Guest</span></a>
+ </div>
+</main>
+</body>
+</html>
