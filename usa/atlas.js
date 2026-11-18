@@ -32,13 +32,15 @@ function mix(a,b,t){
   const rgb=(n,shift)=>(n>>shift)&255;
   return 'rgb('+[16,8,0].map(shift=>Math.round(rgb(a,shift)*(1-t)+rgb(b,shift)*t)).join(',')+')';
 }
+const twilightPalettes={
+  ny:[[0x494d7b,0xe9a9a5],[0x455490,0xffbf7f],[0x3b3d69,0xf0a370],[0x354772,0xb595b8]],
+  ak:[[0x334c77,0xa0c0cc],[0x364d7b,0xe8b6a5],[0x243b68,0xbca1b6],[0x2c426b,0x93b6d1]],
+  lv:[[0x4e4a79,0xf1ad91],[0x4c426e,0xffb777],[0x563b65,0xe4a07d],[0x41436b,0xdeb1ac]]
+};
 function sky(){
   const alaska=state.region==='ak';
-  const twilight = alaska
-    ? [[0x334c77,0xa0c0cc],[0x364d7b,0xe8b6a5],[0x243b68,0xbca1b6],[0x2c426b,0x93b6d1]]
-    : [[0x494d7b,0xe9a9a5],[0x455490,0xffbf7f],[0x3b3d69,0xf0a370],[0x354772,0xb595b8]];
   const nightHorizon = [0x3d3b59,0x393153,0x343453,0x38506c];
-  const palettes = state.night ? [0x0a1029,nightHorizon[state.season]] : twilight[state.season];
+  const palettes = state.night ? [0x0a1029,nightHorizon[state.season]] : twilightPalettes[state.region][state.season];
   for(let y=0;y<100;y+=2) rect(0,y,320,2,mix(...palettes,y/100));
   const random=rng(86);
   if(state.night){
@@ -430,6 +432,136 @@ function alaskaMotion(time,night){
     line(x,y+1,x+3,y-wing,night?'#8682a1':'#343d57');
   }
 }
+
+const vegasRidge=[[0,80],[12,71],[28,58],[40,65],[53,47],[66,54],[79,73],[97,66],[111,73],[131,69],[156,78],[181,62],[195,64],[213,68],[229,59],[242,44],[251,55],[270,54],[288,72],[305,63],[320,73]];
+const vegasGlyphs={
+  L:['100','100','100','100','111'],A:['010','101','111','101','101'],S:['111','100','111','001','111'],
+  V:['101','101','101','101','010'],E:['111','100','110','100','111'],G:['111','100','101','101','111']
+};
+function vegasSign(night){
+  rect(34,103,2,21,'#57465c');
+  rect(44,103,2,21,'#57465c');
+  pixels([[7,99],[24,89],[56,89],[73,99],[56,108],[24,108]],night?'#fbb7a0':'#e8aa8d');
+  pixels([[10,99],[24,91],[56,91],[70,99],[56,106],[24,106]],night?'#f8ddac':'#f3d3a4');
+  for(const [i,letter] of [...'LAS VEGAS'].entries()){
+    const glyph=vegasGlyphs[letter];
+    if(!glyph) continue;
+    glyph.forEach((row,y)=>[...row].forEach((cell,x)=>{
+      if(cell==='1') rect(23+i*4+x,97+y,1,1,'#9f3b60');
+    }));
+  }
+  line(39,78,39,92,'#edb869');
+  line(32,85,46,85,'#edb869');
+  line(35,81,43,89,'#ffedb6');
+  line(35,89,43,81,'#ffedb6');
+}
+function palm(x,y,scale,night){
+  transformed(x,y,scale,()=>{
+    line(-1,0,1,-13,'#695163');
+    const leaves=night?'#283747':'#555263';
+    for(const [dx,dy] of [[-7,-15],[-6,-10],[0,-18],[7,-16],[8,-11]]) line(1,-13,dx,dy,leaves);
+  });
+}
+
+function vegasLandscape(){
+  const night=state.night;
+  pixels([...vegasRidge,[320,99],[0,99]],night?'#30314a':'#755065');
+  if(state.season===3){
+    pixels([[43,61],[53,47],[66,54],[71,64],[61,57],[57,60],[53,54]],night?'#86839b':'#dfbabb');
+    pixels([[234,53],[242,44],[251,55],[261,55],[264,60],[248,58],[242,51]],night?'#86839b':'#dfbabb');
+  }
+  pixels([[0,82],[29,77],[62,85],[92,75],[118,79],[151,76],[187,81],[223,74],[267,79],[320,74],[320,144],[0,144]],night?'#27283d':'#987174');
+  const random=rng(74);
+  for(const [x,y,w,h,tone,neon] of [
+    [7,70,24,26,0x815970,'#dd86b1'],[43,55,24,43,0x9e6d7f,'#ffb982'],
+    [67,60,15,36,0x8e6372,'#d28db9'],[87,47,27,49,0x937186,'#fcdaa8'],
+    [116,53,21,43,0xa58184,'#ffd398'],[143,63,22,33,0x816071,'#f18baf'],
+    [169,54,18,42,0x7b6382,'#b68bf1'],[236,79,12,21,0x76546e,'#f1b0b7'],
+    [276,88,12,13,0x756889,'#8ce9f2'],[297,74,23,27,0x8c667f,'#ce94e4']
+  ]){
+    const wall=night?mix(tone,0x212339,.71):mix(tone,0x1b233d,.19);
+    rect(x,y,w,h,wall);
+    rect(x+2,y-3,w-4,3,wall);
+    rect(x,y,w,1,night?neon:'#c8999a');
+    rect(x+w-2,y+1,1,h-1,night?neon:'#a77b89');
+    for(let offset=4;offset<h-2;offset+=4){
+      for(let column=3;column<w-3;column+=4){
+        if(random()>.34) rect(x+column,y+offset,2,1,night?(random()>.32?neon:'#583a62'):'#805b71');
+      }
+    }
+  }
+  const pavement=night?'#292340':'#735a6d';
+  rect(0,95,320,27,pavement);
+  rect(19,108,192,13,night?'#1b354e':'#52516a');
+  pixels([[70,103],[154,103],[194,110],[178,118],[81,118],[55,110]],night?'#253b59':'#737086');
+  for(let i=0;i<42;i++){
+    rect(66+random()*123,105+random()*12,2+random()*7,1,night?'#3a5981':'#9b8291');
+  }
+  rect(0,123,320,21,night?'#1c1d33':'#51485f');
+  rect(0,122,320,1,night?'#7e5892':'#9f7a82');
+  for(let x=0;x<320;x+=17) rect(x,133,8,1,'#957087');
+  for(const [x,y,h] of [[8,118,1.25],[74,119,1],[148,120,1.3],[187,120,1.1],[244,121,1.4],[304,119,1.1]]) palm(x,y,h,night);
+  vegasSign(night);
+  line(252,101,265,67,night?'#657494':'#94778b');
+  line(283,101,265,67,night?'#657494':'#94778b');
+}
+
+function vegasMotion(time,night){
+  const palette=night?[0xdd75b4,0xbb7aff,0x77dbe8]:[0xcf7d9c,0x9875aa,0x7cabca];
+  const sphereX=213,sphereY=80,radius=22;
+  const low=mix(palette[1],0x2b2446,.6);
+  for(let row=-radius;row<=radius;row+=2){
+    const half=Math.floor(Math.sqrt(radius*radius-row*row));
+    rect(sphereX-half,sphereY+row,2*half+1,2,low);
+    for(let x=-half;x<=half;x+=2){
+      const band=.5+.5*Math.sin(x*.25+row*.34-time*1.65);
+      const color=mix(palette[0],palette[2],band);
+      rect(sphereX+x,sphereY+row,1,1,color);
+    }
+  }
+  rect(195,102,36,2,night?'#a577d2':'#84668a');
+  const wheelX=267,wheelY=66,wheelR=23;
+  const rotation=time*.28;
+  for(let i=0;i<72;i++){
+    const angle=i*Math.PI/36;
+    rect(wheelX+Math.cos(angle)*wheelR,wheelY+Math.sin(angle)*wheelR,1,1,night?'#9cbaf0':'#a991a6');
+  }
+  for(let i=0;i<12;i++){
+    const angle=i*Math.PI/6+rotation;
+    const x=wheelX+Math.cos(angle)*wheelR,y=wheelY+Math.sin(angle)*wheelR;
+    line(wheelX,wheelY,x,y,night?'#505682':'#81667e');
+    rect(x-1,y-1,3,2,night?'#f7cfdb':'#c8aab7');
+  }
+  rect(wheelX-1,wheelY-1,3,3,night?'#f8d3e9':'#dab0b1');
+
+  const waterColor=night?'#c6f5fd':'#efd9df';
+  for(let jet=0;jet<15;jet++){
+    const x=74+jet*7,y=113-Math.sin(jet*Math.PI/14)*5;
+    const surge=Math.max(0,Math.sin(time*2.7-jet*.43));
+    const height=3+surge*(12+8*Math.sin(jet*Math.PI/14));
+    const towardCenter=(7-jet)*.36;
+    for(let drop=0;drop<=height;drop+=2){
+      const sway=towardCenter*drop/height+Math.sin(time*3+drop*.26)*.9;
+      rect(x+sway,y-drop,jet%3===0?2:1,1,drop%4===0?waterColor:'#7caecc');
+    }
+    rect(x-1,y,3,1,'#94b9ce');
+  }
+  for(const [offset,velocity,lane,color] of [[-20,21,126,'#ca8aa8'],[118,18,126,'#bbb8ce'],[290,-26,138,'#608dac']]){
+    const x=((offset+velocity*time)%356+356)%356-18;
+    rect(x,lane,10,3,color);
+    rect(x+2,lane-1,5,1,'#78889e');
+    if(night){
+      rect(x+(velocity>0?9:0),lane+1,2,1,'#ffe6bb');
+      rect(x+(velocity>0?0:9),lane+1,1,1,'#eb7398');
+    }
+  }
+}
+
+const regions={
+  ny:{name:'New York',description:'New York skyline with the Statue of Liberty, Brooklyn Bridge, Central Park, Times Square, an elevated train, four Elementals, Iron Spider, and Mysterio.',landscape:nyLandscape,horizon:'#293247'},
+  ak:{name:'Alaska',description:'Alaska with snowy peaks, a glacial fjord, a cabin in the woods, a moose, and a brown bear.',landscape:alaskaLandscape,horizon:'#20323e'},
+  lv:{name:'Las Vegas',description:'A desert skyline with the neon Las Vegas Strip, animated fountains, the Sphere, and the High Roller observation wheel.',landscape:vegasLandscape,horizon:'#1c1d33'}
+};
 
 const chase = [
   {start:0,end:3.1,from:[-18,99],to:[48,77]},
@@ -884,10 +1016,10 @@ function prepare(){
     layer.canvas.height=height;
     layer.buffer.height=height;
     layer.offset=Math.round((height-288)*.45);
-    const horizon=state.region==='ny'?'#293247':'#20323e';
+    const horizon=regions[state.region].horizon;
     ctx.fillStyle=horizon;
     ctx.fillRect(0,0,640,height);
-    ctx.fillStyle=state.night?'#0a1029':state.region==='ny'?'#3b3d69':'#243b68';
+    ctx.fillStyle=state.night?'#0a1029':mix(twilightPalettes[state.region][state.season][0],0,0);
     ctx.fillRect(0,0,640,layer.offset);
     if(state.night && layer.offset>0){
       const random=rng(414);
@@ -895,8 +1027,7 @@ function prepare(){
     }
     ctx.setTransform(2,0,0,2,0,layer.offset);
     sky();
-    if(state.region==='ny') nyLandscape();
-    else alaskaLandscape();
+    regions[state.region].landscape();
   }
 }
 function draw(){
@@ -919,11 +1050,11 @@ function draw(){
         line(trainX+242,69,trainX+240,72,'#fff');
       });
       interaction(time);
-    }else {
+    }else if(state.region==='ak'){
       alaskaMotion(time,index===1);
       smallFish(time,index===1);
-    }
-    if(state.season===3){
+    }else vegasMotion(time,index===1);
+    if(state.season===3 && state.region!=='lv'){
       for(const [x,y,speed,phase] of flakes) {
         const size=speed>18?2:1;
         rect((x+Math.sin(elapsed*.8+phase)*3+320)%320,(y+elapsed*speed)%144,size,size,size===2?'#e6f3f9':'#acbdcf');
@@ -952,9 +1083,9 @@ function syncAnimation(){
   }
 }
 function render(){
-  const city=state.region==='ny';
-  $('#landmark').textContent=city?'New York':'Alaska';
-  $('#landscape').setAttribute('aria-label',city?'New York skyline with the Statue of Liberty, Brooklyn Bridge, Central Park, Times Square, an elevated train, four Elementals, Iron Spider, and Mysterio.':'Alaska with snowy peaks, a glacial fjord, a cabin in the woods, a moose, and a brown bear.');
+  const region=regions[state.region];
+  $('#landmark').textContent=region.name;
+  $('#landscape').setAttribute('aria-label',region.description);
   document.querySelectorAll('[data-region]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.region===state.region)));
   prepare();
   draw();
@@ -962,7 +1093,7 @@ function render(){
 }
 $('nav').addEventListener('click',event=>{
   const place=event.target.closest('[data-region]')?.dataset.region;
-  if(!place || state.region===place) return;
+  if(!Object.hasOwn(regions,place) || state.region===place) return;
   state.region=place;
   render();
 });
