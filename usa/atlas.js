@@ -92,7 +92,7 @@ function aurora(time){
   ctx.beginPath();
   ctx.moveTo(0,0);
   ctx.lineTo(320,0);
-  for(const [x,y] of [...mountainRidge].reverse()) ctx.lineTo(x,y);
+  for(const [x,y] of reversedMountainRidge) ctx.lineTo(x,y);
   ctx.closePath();
   ctx.clip();
   for(let x=0;x<320;x+=2){
@@ -150,6 +150,7 @@ function tree(x,y,h,random,pine=false){
   }
 }
 const mountainRidge=[[0,88],[19,66],[39,56],[53,63],[82,43],[105,58],[144,25],[165,31],[179,49],[198,57],[214,39],[244,67],[280,50],[320,71]];
+const reversedMountainRidge=[...mountainRidge].reverse();
 function mountains(glacier){
   pixels([...mountainRidge,[320,101],[0,101]],state.night?'#4b5d7c':'#78859a');
   pixels([[39,56],[53,63],[82,43],[105,58],[144,25],[165,31],[179,49],[198,57],[214,39],[228,52],[213,48],[202,66],[171,57],[156,56],[151,45],[133,52],[119,70],[107,66],[93,73],[79,57],[63,67]],state.night?'#94adc3':'#e6edf0');
@@ -1912,24 +1913,28 @@ function storyTime(){
   const turn=(elapsed-start)%(length*2);
   return turn<=length ? turn : length*2-turn;
 }
+let cycleOffset=0;
 function setAutomatic(enabled){
+  const resuming=enabled&&!automatic;
   automatic=enabled;
   cycle.setAttribute('aria-pressed',String(enabled));
   cycle.textContent=enabled?'Auto cycle':'Manual';
   if(enabled){
+    if(resuming) cycleOffset=elapsed-(state.season+skyPhase)*dayDuration;
     updateCycle();
     draw();
   }
   syncAnimation();
 }
 function updateCycle(){
-  const nextSeason=Math.floor(elapsed/dayDuration)%4;
+  const cycleTime=Math.max(0,elapsed-cycleOffset);
+  const nextSeason=Math.floor(cycleTime/dayDuration)%4;
   if(state.season!==nextSeason){
     state.season=nextSeason;
     season.value=String(nextSeason);
     prepare();
   }
-  const phase=(elapsed%dayDuration)/dayDuration;
+  const phase=(cycleTime%dayDuration)/dayDuration;
   light.value=String(Math.floor(phase*100));
   setSkyPhase(phase);
 }
@@ -1972,9 +1977,13 @@ document.addEventListener('fullscreenchange',()=>{
   fullscreen.textContent=active?'Exit fullscreen':'Fullscreen';
   fullscreen.setAttribute('aria-pressed',String(active));
 });
+let resizeFrame=0;
 window.addEventListener('resize',()=>{
-  prepare();
-  draw();
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame=requestAnimationFrame(()=>{
+    prepare();
+    draw();
+  });
 });
 updateCycle();
 render();
