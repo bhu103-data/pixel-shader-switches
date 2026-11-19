@@ -566,8 +566,8 @@ function vegasLandscape(){
   for(let x=0;x<320;x+=17) rect(x,133,8,1,'#957087');
   for(const [x,y,h] of [[8,118,1.25],[74,119,1],[148,120,1.3],[187,120,1.1],[244,121,1.4],[304,119,1.1]]) palm(x,y,h,night);
   vegasSign(night);
-  line(252,101,265,67,night?'#657494':'#94778b');
-  line(283,101,265,67,night?'#657494':'#94778b');
+  line(249,104,270,65,night?'#657494':'#94778b');
+  line(294,104,270,65,night?'#657494':'#94778b');
 }
 
 function sphereOval(x,y,rx,ry,color){
@@ -673,6 +673,10 @@ const bonusInterval=36;
 const bonusWarningDuration=1.4;
 const bonusMarqueeEnd=8.6;
 const bonusX=145,bonusY=28;
+const vegasPickupAt=jackpotAt+3.45;
+const vegasBoardAt=10.65;
+const vegasCabLeaveAt=12.65;
+const vegasStreetEnd=17.1;
 const jackpotRandom=rng(777);
 const jackpotRain=Array.from({length:118},(_,index)=>{
   const bill=index%3===0;
@@ -743,7 +747,7 @@ function fallingJackpot(age,skyTop){
     const progress=(age-delay)/duration;
     if(progress<0 || progress>1) continue;
     const motion=bill?progress:progress*(.58+.42*progress);
-    const y=lerp(skyTop-7,153,motion);
+    const y=lerp(skyTop-7,131,motion);
     const sway=Math.sin(phase+progress*Math.PI*(bill?4:2))*(bill?8:3);
     const flip=Math.cos(phase+progress*Math.PI*(bill?5:8));
     ctx.save();
@@ -826,10 +830,9 @@ function vegasBonus(time,skyTop){
   fallingJackpot(time-jackpotAt-.24,skyTop);
 }
 
-function vegasMotion(time,night,displayTime){
-  vegasSphere(displayTime,night);
-  const wheelX=267,wheelY=66,wheelR=23;
-  const rotation=time*.28;
+function vegasWheel(time,night,reacting){
+  const wheelX=270,wheelY=65,wheelR=29;
+  const rotation=time*.22;
   for(let i=0;i<72;i++){
     const angle=i*Math.PI/36;
     rect(wheelX+Math.cos(angle)*wheelR,wheelY+Math.sin(angle)*wheelR,1,1,night?'#9cbaf0':'#a991a6');
@@ -838,9 +841,105 @@ function vegasMotion(time,night,displayTime){
     const angle=i*Math.PI/6+rotation;
     const x=wheelX+Math.cos(angle)*wheelR,y=wheelY+Math.sin(angle)*wheelR;
     line(wheelX,wheelY,x,y,night?'#505682':'#81667e');
-    rect(x-1,y-1,3,2,night?'#f7cfdb':'#c8aab7');
+    rect(x,y,1,3,'#a89fbd');
+    rect(x-4,y+2,9,5,night?'#303a59':'#6d5976');
+    rect(x-3,y+3,7,3,night?'#f3d6a2':'#efccbd');
+    rect(x-2,y+3,1,1,'#503f54');
+    rect(x+1,y+3,1,1,'#553f50');
+    rect(x-2,y+4,1,2,'#79658f');
+    rect(x+1,y+4,1,2,'#89516b');
+    if(reacting){
+      rect(x-3,y+3,1,1,'#79658f');
+      rect(x+2,y+3,1,1,'#89516b');
+      if(i%4===0) rect(x+5,y+1,1,2,'#ffeeb3');
+    }
+    rect(x-3,y+7,7,1,night?'#cfa9dc':'#a590ad');
   }
   rect(wheelX-1,wheelY-1,3,3,night?'#f8d3e9':'#dab0b1');
+  rect(241,104,61,5,'#4b3b56');
+  rect(242,104,58,1,night?'#ffe0ab':'#bd9a9e');
+  rect(242,109,2,9,'#634f68');
+  rect(298,109,2,9,'#634f68');
+  for(let step=0;step<4;step++) rect(301+step*2,105+step*2,4,1,'#a98ca0');
+  for(const x of [242,258,274,290,300]) rect(x,98,1,6,'#856b86');
+  rect(242,98,59,1,'#ae91ac');
+  for(const [index,x] of [247,253,261,282,288,294].entries()){
+    vegasPerson(x,104,index,[124,78,145,91,155,102][index],0,0,false,reacting);
+  }
+}
+
+const vegasCabStops=[252,155,64];
+const vegasCoats=['#e492a5','#84b4cf','#e0b87e','#9e8cd0','#74c7af','#e38868'];
+
+function vegasPerson(x,y,person,skin,bend,stride,holding,surprised=false){
+  const coat=vegasCoats[person%vegasCoats.length];
+  const headX=x+Math.round(3*bend),headY=y-10+Math.round(5*bend)-(surprised?1:0);
+  rect(x-2,y,6,1,'#211d31');
+  rect(x-1-stride,y-3,1,3,'#3b3448');
+  rect(x+1+stride,y-3,1,3,'#3b3448');
+  line(x,y-4,headX,headY+2,coat);
+  rect(headX-1,headY+2,3,3,coat);
+  rect(headX-1,headY,3,2,mix(0xeef0d9,0x79493d,skin/255));
+  if(surprised) line(headX-1,headY+3,headX-3,headY,coat);
+  if(bend>.35 || holding) line(headX+1,headY+3,headX+3,bend>.35?y-1:headY+4,holding?'#c1e4a8':coat);
+}
+
+function vegasCab(x,night,door){
+  const y=131;
+  rect(x-12,y+5,25,2,'#222138');
+  rect(x-11,y-2,23,6,'#d49a43');
+  rect(x-10,y-2,21,4,'#ffce68');
+  pixels([[x-7,y-2],[x-4,y-6],[x+5,y-6],[x+9,y-2]],'#f3b951');
+  rect(x-4,y-5,10,3,night?'#66567a':'#59637c');
+  rect(x-2,y-7,5,2,'#fff0ae');
+  rect(x-6,y,10,1,'#98704e');
+  if(door){
+    rect(x-6,y-3,5,6,'#37324a');
+    rect(x-7,y-4,2,6,'#e5ad55');
+  }
+  for(const wheel of [x-8,x+7]) rect(wheel,y+3,4,3,'#272437');
+  rect(x+10,y,2,1,'#fff1bc');
+  rect(x-11,y+1,2,1,'#e5788c');
+}
+
+function vegasStreetActivity(time,night){
+  if(time<0 || time>=vegasStreetEnd) return;
+  for(const [group,stop] of vegasCabStops.entries()){
+    const leave=vegasCabLeaveAt+group*.45;
+    for(let person=0;person<3;person++){
+      const entry=.18+group*.24+person*.24;
+      const pickup=vegasPickupAt+group*.21+person*.24;
+      const board=vegasBoardAt+group*.40+person*.31;
+      if(time<entry || time>=board+.28) continue;
+      const spot=stop+(person-1)*15+group%2*2;
+      const curb=122+person%2;
+      const walk=smooth((time-entry)/3.9);
+      const taxiWalk=smooth((time-pickup-1.05)/(board-pickup-1.05));
+      const stepIn=smooth((time-board+.25)/.50);
+      const bend=smooth((time-pickup)/.34)*smooth((pickup+1.05-time)/.36);
+      const holding=time>=pickup+.5;
+      const streetX=spot+(group%2?18:-19)*(1-walk);
+      const x=lerp(streetX,stop-4,taxiWalk);
+      const stride=walk<1 || (taxiWalk>0 && taxiWalk<1)?Math.round(Math.sin(time*15+person)*1.1):0;
+      if(time>=pickup-1.05 && !holding){
+        rect(spot+3,curb-1,4,1,person%2?'#b9e68f':'#fadb77');
+        rect(spot+5,curb-2,1,1,person%2?'#cdebc1':'#fff0af');
+      }
+      ctx.save();
+      ctx.globalAlpha=smooth((time-entry)/.3)*(1-smooth((time-board)/.28));
+      vegasPerson(x,curb+stepIn*8,group*3+person,83+group*19+person*21,bend,stride,holding);
+      ctx.restore();
+    }
+    const arrive=smooth((time-.75-group*.6)/(7.1-group*.18));
+    const depart=smooth((time-leave)/3.4);
+    const cabX=lerp(-26,stop,arrive)+(351-stop)*depart;
+    vegasCab(cabX,night,time>=vegasBoardAt-.3+group*.40 && time<leave);
+  }
+}
+
+function vegasMotion(time,night,displayTime,bonusTime){
+  vegasSphere(displayTime,night);
+  vegasWheel(displayTime,night,bonusTime>=jackpotAt && bonusTime<10.8);
 
   const waterColor=night?'#c6f5fd':'#efd9df';
   for(let jet=0;jet<15;jet++){
@@ -863,12 +962,13 @@ function vegasMotion(time,night,displayTime){
       rect(x+(velocity>0?0:9),lane+1,1,1,'#eb7398');
     }
   }
+  vegasStreetActivity(bonusTime,night);
 }
 
 const regions={
   ny:{name:'New York',description:'New York skyline with the Statue of Liberty, Brooklyn Bridge, Central Park, Times Square, an elevated train, four Elementals, Iron Spider, and Mysterio.',landscape:nyLandscape,horizon:'#293247'},
   ak:{name:'Alaska',description:'Alaska with snowy peaks, a glacial fjord, a cabin in the woods, a moose, and a brown bear.',landscape:alaskaLandscape,horizon:'#20323e'},
-  lv:{name:'Las Vegas',description:'The Welcome to Las Vegas sign, the neon Strip, fountains, the High Roller, and the animated Sphere. A surprise slot machine bonus briefly rains dollar bills and gold coins.',landscape:vegasLandscape,horizon:'#1c1d33'}
+  lv:{name:'Las Vegas',description:'The neon Strip, the animated Sphere, fountains, and the High Roller with riders and a boarding platform. After a 777 jackpot, pedestrians collect bills and coins and leave in yellow cabs.',landscape:vegasLandscape,horizon:'#1c1d33'}
 };
 
 const chase = [
@@ -1525,7 +1625,7 @@ function draw(){
       alaskaMotion(time,index===1);
       smallFish(time,index===1);
     }else{
-      vegasMotion(time,index===1,vegasTime);
+      vegasMotion(time,index===1,vegasTime,bonusTime);
       if(vegasLucky) vegasLuckyCue(1+bonusTime/bonusWarningDuration);
       vegasBonus(bonusTime,-layer.offset/2);
     }
@@ -1535,7 +1635,9 @@ function draw(){
   let notice='';
   if(state.region==='ny') notice=warningLabel(time,chapter);
   if(vegasLucky) notice='Lucky streak on the Strip';
-  if(state.region==='lv' && bonusTime>=jackpotAt && bonusTime<bonusMarqueeEnd) notice='Jackpot · 777';
+  if(state.region==='lv' && bonusTime>=jackpotAt && bonusTime<vegasStreetEnd){
+    notice=bonusTime<vegasPickupAt?'Jackpot · 777':bonusTime<vegasBoardAt?'Picking up cash on the Strip':bonusTime<vegasCabLeaveAt?'Passengers boarding taxis':'Taxis leaving the Strip';
+  }
   if(alert.textContent!==notice) alert.textContent=notice;
 }
 function animate(now){
