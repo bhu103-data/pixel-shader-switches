@@ -640,7 +640,9 @@ function vegasSphere(elapsed,night){
 const jackpotAt=3.8;
 const bonusStart=8;
 const bonusInterval=36;
+const bonusWarningDuration=1.4;
 const bonusMarqueeEnd=8.6;
+const bonusX=145,bonusY=28;
 const jackpotRandom=rng(777);
 const jackpotRain=Array.from({length:118},(_,index)=>{
   const bill=index%3===0;
@@ -733,8 +735,27 @@ function fallingJackpot(age,skyTop){
   }
 }
 
-function vegasBonus(displayTime,skyTop){
-  const time=(displayTime-bonusStart)%bonusInterval;
+function vegasBonusWarning(time){
+  const progress=1+time/bonusWarningDuration;
+  const pulse=Math.sin(progress*Math.PI)**2;
+  ctx.save();
+  ctx.translate(bonusX,bonusY);
+  ctx.globalAlpha=smooth(progress/.16)*(1-smooth((progress-.84)/.16));
+  pixels([[-17,-5],[-12,-10],[12,-10],[17,-5],[17,5],[12,10],[-12,10],[-17,5]],mix(0xcf7b40,0xffdc83,pulse));
+  pixels([[-15,-4],[-11,-8],[11,-8],[15,-4],[15,4],[11,8],[-11,8],[-15,4]],'#322032');
+  for(const x of [-6,3]){
+    rect(x,-5,3,7,'#ffe19a');
+    rect(x,4,3,2,'#ffe19a');
+  }
+  const reach=21+3*pulse;
+  for(const side of [-1,1]){
+    line(side*reach,-4,side*(reach+4),-7,'#e5a95e');
+    line(side*reach,4,side*(reach+4),7,'#e5a95e');
+  }
+  ctx.restore();
+}
+
+function vegasBonus(time,skyTop){
   if(time<0 || time>=13) return;
   if(time<bonusMarqueeEnd){
     const enter=smooth(time/.24);
@@ -742,7 +763,7 @@ function vegasBonus(displayTime,skyTop){
     const scale=.8*(.82+.18*enter);
     ctx.save();
     ctx.globalAlpha=enter*exit;
-    ctx.translate(145,28+5*(1-enter));
+    ctx.translate(bonusX,bonusY+5*(1-enter));
     ctx.scale(scale,scale);
     ctx.translate(-132,-74);
     jackpotMarquee(time);
@@ -751,7 +772,7 @@ function vegasBonus(displayTime,skyTop){
   fallingJackpot(time-jackpotAt-.24,skyTop);
 }
 
-function vegasMotion(time,night,displayTime,skyTop){
+function vegasMotion(time,night,displayTime){
   vegasSphere(displayTime,night);
   const wheelX=267,wheelY=66,wheelR=23;
   const rotation=time*.28;
@@ -788,7 +809,6 @@ function vegasMotion(time,night,displayTime,skyTop){
       rect(x+(velocity>0?0:9),lane+1,1,1,'#eb7398');
     }
   }
-  vegasBonus(displayTime,skyTop);
 }
 
 const regions={
@@ -1269,6 +1289,9 @@ function prepare(){
 }
 function draw(){
   const time=storyTime();
+  const vegasTime=elapsed-vegasDisplayStart;
+  const bonusTime=(vegasTime-bonusStart+bonusWarningDuration)%bonusInterval-bonusWarningDuration;
+  const vegasWarning=state.region==='lv' && bonusTime>=-bonusWarningDuration && bonusTime<0;
   let chapter=null;
   for(const [index,layer] of layers.entries()){
     ctx=layer.target;
@@ -1296,7 +1319,11 @@ function draw(){
     }else if(state.region==='ak'){
       alaskaMotion(time,index===1);
       smallFish(time,index===1);
-    }else vegasMotion(time,index===1,elapsed-vegasDisplayStart,-layer.offset/2);
+    }else{
+      vegasMotion(time,index===1,vegasTime);
+      if(vegasWarning) vegasBonusWarning(bonusTime);
+      vegasBonus(bonusTime,-layer.offset/2);
+    }
     if(state.season===3 && state.region!=='lv'){
       for(const [x,y,speed,phase] of flakes) {
         const size=speed>18?2:1;
@@ -1304,7 +1331,7 @@ function draw(){
       }
     }
   }
-  const notice=state.region==='ny'?warningLabel(time,chapter):'';
+  const notice=state.region==='ny'?warningLabel(time,chapter):vegasWarning?'Warning · Unusual activity on the Strip':'';
   if(alert.textContent!==notice) alert.textContent=notice;
 }
 function animate(now){
