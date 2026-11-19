@@ -1796,9 +1796,6 @@ function warningLabel(time,chapter){
 const stage=$('#stage');
 const manhattanView=$('#manhattan-view');
 const manhattanControls=$('#manhattan-controls');
-const manhattan3dHost=$('#manhattan-3d');
-const manhattan3dStatus=$('#manhattan-3d-status');
-let manhattan3d=null, loadingManhattan3d=false;
 const motion=$('#motion');
 const alert=$('#alert');
 const fullscreen=$('#fullscreen');
@@ -1887,44 +1884,9 @@ function updateManhattanCamera(tourTime,trainX,cabX){
   stage.style.setProperty('--view-y',origin((y*2+layer.offset)/layer.canvas.height)*100+'%');
 }
 
-async function syncManhattanView(){
-  const active=state.region==='ny' && manhattanView.value==='three';
-  manhattan3dHost.hidden=!active || !manhattan3d;
-  if(!active){
-    manhattan3dStatus.textContent='';
-    return;
-  }
-  if(manhattan3d){
-    manhattan3dStatus.textContent='';
-    return;
-  }
-  if(loadingManhattan3d) return;
-  loadingManhattan3d=true;
-  manhattan3dStatus.textContent='Loading Manhattan in 3D…';
-  try{
-    const {createManhattan3D}=await import('./manhattan-3d.js?v=1');
-    manhattan3d=createManhattan3D(manhattan3dHost);
-    await syncManhattanView();
-  }catch(error){
-    console.warn('Manhattan 3D could not start:',error);
-    if(state.region==='ny' && manhattanView.value==='three'){
-      manhattanView.value='wide';
-      manhattan3dStatus.textContent='3D is unavailable on this device. Showing the panorama.';
-    }
-  }finally{
-    loadingManhattan3d=false;
-    draw();
-  }
-}
-
 function draw(){
   const time=storyTime();
   const tourTime=elapsed-nyStoryStart;
-  if(!manhattan3dHost.hidden && manhattan3d){
-    manhattan3d.draw(tourTime,skyPhase,nightBlend);
-    if(alert.textContent) alert.textContent='';
-    return;
-  }
   const trainX=trainPosition(tourTime%(680/13.9));
   const cabX=(tourTime*18+75)%428-38;
   updateManhattanCamera(tourTime,trainX,cabX);
@@ -2000,7 +1962,6 @@ function syncAnimation(){
 function render(){
   const region=regions[state.region];
   manhattanControls.hidden=state.region!=='ny';
-  syncManhattanView();
   $('#landmark').textContent=region.name;
   $('#landscape').setAttribute('aria-label',region.description);
   document.querySelectorAll('[data-region]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.region===state.region)));
@@ -2008,10 +1969,7 @@ function render(){
   draw();
   syncAnimation();
 }
-manhattanView.addEventListener('change',()=>{
-  syncManhattanView();
-  draw();
-});
+manhattanView.addEventListener('change',draw);
 $('nav').addEventListener('click',event=>{
   const place=event.target.closest('[data-region]')?.dataset.region;
   if(!Object.hasOwn(regions,place) || state.region===place) return;
