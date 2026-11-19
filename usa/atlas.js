@@ -497,7 +497,7 @@ const vegasGlyphs={
   V:['101','101','101','101','010'],E:['111','100','110','100','111'],G:['111','100','101','101','111'],
   J:['001','001','001','101','111'],C:['111','100','100','100','111'],K:['101','101','110','101','101'],
   P:['110','101','110','100','100'],O:['111','101','101','101','111'],T:['111','010','010','010','010'],
-  B:['110','101','110','101','110'],N:['101','111','111','111','101'],U:['101','101','101','101','111']
+  B:['110','101','110','101','110'],N:['101','111','111','111','101'],U:['101','101','101','101','111'],Y:['101','101','010','010','010']
 };
 function vegasText(text,x,y,color){
   for(const [index,letter] of [...text].entries()){
@@ -765,10 +765,19 @@ function fallingJackpot(age,skyTop){
   }
 }
 
-function warningBadge(x,y,progress){
+function dangerWarning(layer,progress){
   const pulse=Math.sin(progress*Math.PI)**2;
+  const darkness=smooth(progress/.065)*(1-smooth((progress-.70)/.30));
+  const top=-layer.offset/2, height=layer.canvas.height/2;
+  const edge=ctx.createRadialGradient(160,top+height*.47,35,160,top+height*.47,Math.hypot(160,height*.54));
+  edge.addColorStop(0,'#63162300');
+  edge.addColorStop(1,'#641720b0');
   ctx.save();
-  ctx.translate(x,y);
+  ctx.globalAlpha=darkness*.69;
+  rect(0,top,320,height,'#080912');
+  ctx.globalAlpha=darkness;
+  rect(0,top,320,height,edge);
+  ctx.translate(145,30);
   ctx.globalAlpha=smooth(progress/.16)*(1-smooth((progress-.84)/.16));
   pixels([[-17,-5],[-12,-10],[12,-10],[17,-5],[17,5],[12,10],[-12,10],[-17,5]],mix(0xcf7b40,0xffdc83,pulse));
   pixels([[-15,-4],[-11,-8],[11,-8],[15,-4],[15,4],[11,8],[-11,8],[-15,4]],'#322032');
@@ -780,6 +789,22 @@ function warningBadge(x,y,progress){
   for(const side of [-1,1]){
     line(side*reach,-4,side*(reach+4),-7,'#e5a95e');
     line(side*reach,4,side*(reach+4),7,'#e5a95e');
+  }
+  ctx.restore();
+}
+
+function vegasLuckyCue(progress){
+  const glow=Math.sin(Math.PI*progress);
+  ctx.save();
+  ctx.translate(bonusX,bonusY);
+  ctx.globalAlpha=smooth(progress/.16)*(1-smooth((progress-.86)/.14));
+  pixels([[-22,0],[-16,-8],[16,-8],[22,0],[16,8],[-16,8]],'#efc873');
+  pixels([[-20,0],[-15,-7],[15,-7],[20,0],[15,7],[-15,7]],'#254d48');
+  vegasText('LUCKY',-9,-2,'#fff1ac');
+  for(const side of [-1,1]){
+    const x=side*(24+5*glow), y=-3*glow;
+    rect(x-2,y,5,1,'#f5dc87');
+    rect(x,y-2,1,5,'#aef3be');
   }
   ctx.restore();
 }
@@ -1033,12 +1058,10 @@ function wrist(x,y,angle,hand){
 const nyAlarmStart=3.8,nyAlarmEnd=5.6;
 const nySpiderStart=7,nyBossStart=22;
 const bossRevealBeat=8.5;
+const webStrikeBeat=12.8,bossHitBeat=12.96,bossEscapeBeat=16.1,bossExitBeat=20.5;
 
-function cityWarning(time){
-  const progress=(time-nyAlarmStart)/(nyAlarmEnd-nyAlarmStart);
-  if(progress<=0 || progress>=1) return;
+function cityWarning(time,progress){
   const danger=smooth(progress/.2)*(1-smooth((progress-.8)/.2));
-  warningBadge(145,30,progress);
   ctx.save();
   ctx.globalAlpha=danger*(.12+.14*Math.sin(time*2.7)**2);
   for(const [x,y,w,h] of [[91,68,17,29],[111,76,14,22],[129,64,15,31],[162,72,16,24]]){
@@ -1237,20 +1260,32 @@ function elementScenes(time){
 
 function mysterio(time){
   const reveal=smooth((time-bossRevealBeat)/3);
-  const retreat=smooth((time-16.1)/5);
-  const presence=reveal*(1-retreat);
+  const escape=clamp((time-bossEscapeBeat)/(bossExitBeat-bossEscapeBeat));
+  const travel=escape**1.55;
+  const presence=reveal*(1-smooth((escape-.92)/.08));
   if(presence===0) return null;
-  const x=254-65*smooth((time-12)/5)+Math.sin(time*.72)*5,y=48-14*reveal-6*retreat+Math.sin(time*1.2)*2;
+  const hoverTime=Math.min(time,bossEscapeBeat);
+  const hitAge=time-bossHitBeat;
+  const recoil=smooth(hitAge/.19)*(1-smooth((hitAge-.19)/.82));
+  const x=254-65*smooth((hoverTime-12)/5)+Math.sin(hoverTime*.72)*5-16*recoil+222*travel;
+  const y=48-14*reveal+Math.sin(hoverTime*1.2)*2+5*recoil-52*escape**1.25;
   ctx.save();
-  ctx.globalAlpha=presence*.65;
+  if(escape>0){
+    ctx.globalAlpha=presence*smooth(escape/.16)*.57;
+    for(let i=0;i<9;i++){
+      const x0=x-15-i*5,y0=y+12+i*2+Math.sin(time*8+i)*2;
+      rect(x0,y0,9-i%4,1,i%3?'#8ff5bb':'#d4b5ff');
+    }
+  }
+  ctx.globalAlpha=presence*(1-smooth(escape/.15))*.65;
   for(let i=0;i<40;i++){
     const angle=i*Math.PI/20+time*.24;
     const radius=36+4*Math.sin(time*.9);
     rect(x+Math.cos(angle)*radius,y+9+Math.sin(angle)*radius*.57,2,i%3===0?2:1,i%4===0?'#d4b5ff':'#8ff5bb');
   }
   ctx.globalAlpha=presence;
-  transformed(x,y,2.05+reveal*.30,()=>{
-    const ripple=Math.sin(time*2)*3;
+  transformed(x,y,2.05+reveal*.30-travel*.85,()=>{
+    const ripple=Math.sin(time*2+(time-hoverTime)*5)*(3+escape*3);
     pixels([[-5,-3],[-14,5],[-24,14],[-18,24+ripple],[-10,19],[0,22],[12,17],[22,20-ripple],[16,9],[8,-3]],'#513666');
     pixels([[-5,-2],[-12,7],[-16,19+ripple],[-7,16],[-1,20],[6,14],[15,15-ripple],[11,6],[6,-2]],'#805493');
     limb([-4,0],[-10,4],3,'#54b58b');
@@ -1262,9 +1297,34 @@ function mysterio(time){
     pixels([[-5,-7],[-4,-11],[-2,-13],[3,-13],[5,-11],[6,-7],[4,-3],[-3,-3]],'#658fa4');
     pixels([[-4,-8],[-3,-11],[-1,-12],[2,-12],[4,-10],[4,-6],[2,-4],[-2,-4],[-4,-6]],'#c4e8df');
     rect(-3,-10,2,2,'#f5fcf4');
+    if(hitAge>=0){
+      line(2,-11,0,-8,'#543d69');
+      line(0,-8,2,-7,'#543d69');
+      line(2,-7,1,-5,'#543d69');
+      line(0,-8,-3,-7,'#795286');
+    }
   });
   ctx.restore();
   return {x,y,presence};
+}
+
+function spiderStrike(x,y,age){
+  if(age<0 || age>=.86) return;
+  const strength=smooth(age/.07)*(1-smooth((age-.16)/.70));
+  ctx.save();
+  ctx.globalAlpha=strength;
+  const radius=4+age*27;
+  for(let i=0;i<10;i++){
+    const angle=i*Math.PI/5;
+    const dx=Math.cos(angle),dy=Math.sin(angle);
+    line(x+dx*radius,y+dy*radius,x+dx*(radius+6+i%3),y+dy*(radius+6+i%3),i%3?'#e2f3ff':'#ffad75');
+    rect(x+dx*(radius+11),y+dy*(radius+11),2,1,'#9ceed6');
+  }
+  if(age<.21){
+    rect(x-1,y-6,3,13,'#fff4d3');
+    rect(x-6,y-1,13,3,'#fff4d3');
+  }
+  ctx.restore();
 }
 
 function interaction(time) {
@@ -1283,7 +1343,7 @@ function interaction(time) {
   let counterTarget;
   if(boss && boss.presence>.25){
     const fx=boss.x,fy=boss.y+5;
-    if(time>=9.4 && time<13.6){
+    if(time>=9.4 && time<bossHitBeat){
       const burst=(time-9.4)%1.15;
       const p=burst/1.15;
       for(let i=0;i<3;i++){
@@ -1291,14 +1351,8 @@ function interaction(time) {
         rect(px,py,3,2,i===1?'#d9ffb4':'#77d6a3');
       }
     }
-    if(time>=12.8 && time<13.5) counterTarget=[fx,fy];
-    if(time>=13 && time<=14.8){
-      for(let i=0;i<8;i++){
-        const angle=i*Math.PI/4;
-        const radius=4+(time-13)*7;
-        line(fx+Math.cos(angle)*radius,fy+Math.sin(angle)*radius,fx+Math.cos(angle)*(radius+4),fy+Math.sin(angle)*(radius+4),'#d8ffd2');
-      }
-    }
+    if(time>=webStrikeBeat && time<13.5) counterTarget=[fx+2,boss.y-15];
+    spiderStrike(fx+2,boss.y-15,time-bossHitBeat);
   }
   const takeHold=segment.web ? (segment.start===14.75?1:smooth(t/.16))*smooth((1-t)/.18) : 0;
   const folded=Math.sin(t*Math.PI)**2;
@@ -1326,7 +1380,12 @@ function interaction(time) {
     webStrand(looseEnd,segment.web,fired,letGo*4,1-letGo);
   }
   if(departure) webStrand(hand,departureAnchor,smooth((time-13.68)/.18),(1-launchWeight)*2);
-  if(counterTarget) webStrand(hand,counterTarget,smooth((time-12.8)/.14)*smooth((13.5-time)/.15),1);
+  if(counterTarget){
+    const reach=smooth((time-webStrikeBeat)/(bossHitBeat-webStrikeBeat));
+    const release=smooth((13.5-time)/.2);
+    webStrand(hand,counterTarget,reach,1,release);
+    webStrand([hand[0],hand[1]+1],counterTarget,reach*.97,-3,release*.8);
+  }
   if(grounded>.7){
     ctx.save();
     ctx.globalAlpha=(grounded-.7)*1.4;
@@ -1357,8 +1416,10 @@ function warningLabel(time,chapter){
   if(time>=nyAlarmStart && time<nyAlarmEnd) return 'Danger · Unusual activity near Central Park';
   if(time>=8.35 && time<9.55) return 'Spider-Man · Incoming';
   if(chapter) return chapter.label;
-  if(time>nyBossStart && time<30) return 'Mysterio · Final encounter';
-  if(time>=30 && time<34.8) return 'Mysterio · Projection fading';
+  const action=nyActionTime(time);
+  if(action>bossRevealBeat && action<bossHitBeat) return 'Mysterio · Final encounter';
+  if(action>=bossHitBeat && action<bossEscapeBeat) return 'Spider-Man · Web strike hits Mysterio';
+  if(action>=bossEscapeBeat && action<bossExitBeat) return 'Mysterio · Escaping over the skyline';
   return '';
 }
 
@@ -1431,7 +1492,9 @@ function draw(){
   const time=storyTime();
   const vegasTime=elapsed-vegasDisplayStart;
   const bonusTime=(vegasTime-bonusStart+bonusWarningDuration)%bonusInterval-bonusWarningDuration;
-  const vegasWarning=state.region==='lv' && bonusTime>=-bonusWarningDuration && bonusTime<0;
+  const vegasLucky=state.region==='lv' && bonusTime>=-bonusWarningDuration && bonusTime<0;
+  const nyDanger=state.region==='ny' && time>=nyAlarmStart && time<nyAlarmEnd;
+  const alarmProgress=(time-nyAlarmStart)/(nyAlarmEnd-nyAlarmStart);
   const snow=state.season===3 && state.region!=='lv';
   let chapter=null;
   for(const [index,layer] of layers.entries()){
@@ -1448,7 +1511,7 @@ function draw(){
     if(snow) snowfall(layer,false);
     if(state.region==='ny'){
       const trainX=trainPosition(time);
-      cityWarning(time);
+      if(nyDanger) cityWarning(time,alarmProgress);
       chapter=elementScenes(time);
       smallFish(time,index===1);
       transformed(0,39,1,()=>{
@@ -1463,12 +1526,16 @@ function draw(){
       smallFish(time,index===1);
     }else{
       vegasMotion(time,index===1,vegasTime);
-      if(vegasWarning) warningBadge(bonusX,bonusY,1+bonusTime/bonusWarningDuration);
+      if(vegasLucky) vegasLuckyCue(1+bonusTime/bonusWarningDuration);
       vegasBonus(bonusTime,-layer.offset/2);
     }
     if(snow) snowfall(layer,true);
+    if(nyDanger) dangerWarning(layer,alarmProgress);
   }
-  const notice=state.region==='ny'?warningLabel(time,chapter):vegasWarning?'Warning · Unusual activity on the Strip':'';
+  let notice='';
+  if(state.region==='ny') notice=warningLabel(time,chapter);
+  if(vegasLucky) notice='Lucky streak on the Strip';
+  if(state.region==='lv' && bonusTime>=jackpotAt && bonusTime<bonusMarqueeEnd) notice='Jackpot · 777';
   if(alert.textContent!==notice) alert.textContent=notice;
 }
 function animate(now){
