@@ -393,6 +393,7 @@ function nyLandscape(){
 }
 
 function alaskaLandscape(){
+  const night=state.night;
   mountains(true);
   water(103,true);
   pixels([[0,92],[55,81],[94,95],[120,93],[134,103],[119,114],[138,144],[0,144]],foliage[state.season][0]);
@@ -1093,7 +1094,7 @@ function vegasTrafficPosition(time,index){
   const span=352;
   const travel=offset+time*speed;
   const pass=Math.floor(travel/span);
-  const paint=rng(701+index*97+pass*7919);
+  const paint=rng(701+index*1931+pass*7919);
   return {x:travel-pass*span-16,lane,style:Math.floor(paint()*4)};
 }
 
