@@ -551,7 +551,7 @@ const vegasGlyphs={
   V:['101','101','101','101','010'],E:['111','100','110','100','111'],G:['111','100','101','101','111'],
   J:['001','001','001','101','111'],C:['111','100','100','100','111'],K:['101','101','110','101','101'],
   P:['110','101','110','100','100'],O:['111','101','101','101','111'],T:['111','010','010','010','010'],
-  B:['110','101','110','101','110'],N:['101','111','111','111','101'],U:['101','101','101','101','111'],Y:['101','101','010','010','010']
+  B:['110','101','110','101','110'],N:['101','111','111','111','101'],U:['101','101','101','101','111'],Y:['101','101','010','010','010'],I:['111','010','010','010','111']
 };
 function vegasText(text,x,y,color){
   for(const [index,letter] of [...text].entries()){
@@ -585,6 +585,26 @@ function vegasHotels(night){
   // Landmark hotels stay broad and architectural so the people remain background scale.
   const gold=night?'#8d6b5f':'#d6a06f';
   const goldLight=night?'#d49a73':'#f0c28a';
+  // Wide resort silhouettes establish the Strip before any small figures appear.
+  const bellagio=night?'#403a55':'#87677a';
+  rect(4,51,66,50,bellagio);
+  rect(10,46,54,5,night?'#55445d':'#a17883');
+  rect(17,42,40,4,night?'#755463':'#bd8b88');
+  for(let x=9;x<66;x+=7) rect(x,55,2,44,night?'#8f6b79':'#b7868a');
+  for(let y=59;y<96;y+=6) rect(12,y,55,1,night?'#6e536b':'#9f7682');
+  pixels([[8,101],[66,101],[60,96],[15,96]],night?'#282a42':'#70596b');
+  vegasText('BELLAGIO',15,91,night?'#f4ca93':'#e7b37f');
+  // A grand pyramid resort anchors the opposite side of the skyline.
+  pixels([[136,101],[177,101],[157,57]],night?'#473955':'#a27672');
+  pixels([[142,98],[171,98],[157,64]],night?'#59607b':'#c5a07e');
+  line(157,58,157,52,night?'#dd9a79':'#efc47b');
+  rect(151,92,12,9,night?'#332d49':'#8a5c67');
+  for(const [x,y] of [[149,82],[156,75],[163,82],[153,88],[161,88]]) rect(x,y,2,2,night?'#f0bb7b':'#efd09b');
+  // A tall blue-glass resort gives the composition a strong vertical focal point.
+  rect(181,44,22,57,night?'#303b5b':'#668096');
+  rect(184,39,16,5,night?'#4d5a73':'#8fa6ad');
+  rect(190,33,4,6,night?'#92c9d2':'#b8d0c7');
+  for(let y=49;y<96;y+=5) rect(185,y,14,1,night?'#8ed2dc':'#9cb3b8');
   // Bellagio-style stepped hotel with a warm crown.
   rect(79,57,29,44,night?'#37334d':'#826174');
   rect(83,51,21,6,night?'#4a3a52':'#9e7180');
@@ -966,7 +986,7 @@ function vegasWheel(time,night,reacting){
 
 function vegasWheelQueue(time,reacting){
   const pace=time*11;
-  for(let rider=0;rider<17;rider++){
+  for(let rider=0;rider<10;rider++){
     const distance=(pace+rider*19)%323;
     // Everyone enters from the left, climbs the same stair and exits behind the gate.
     const x=distance-19;
@@ -1061,7 +1081,7 @@ function vegasStreetActivity(time,night,skyTop){
   if(time<0 || time>=vegasStreetEnd) return;
   for(const [group,stop] of vegasCabStops.entries()){
     const leave=vegasCabLeaveAt+group*.45;
-    for(let person=0;person<3;person++){
+    for(let person=0;person<2;person++){
       const order=2-person;
       const entry=.18+group*.24+order*.24;
       const pickup=vegasPickupAt+group*.21+order*.24;
