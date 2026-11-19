@@ -7,6 +7,8 @@
 
 Three interactive scenes explore pixel art, light, and tactile controls in a single HTML file.
 
+The renderer reuses light-field and 2D fallback buffers, supports older Canvas implementations without `roundRect`, and keeps its controls responsive at narrow mobile viewport sizes.
+
 - **Lujiazui Focus Switch** changes the lights and atmosphere of the Shanghai skyline.
 - **Beijing Four Seasons Scroll** moves through seasonal variations of a Beijing panorama.
 - **Light & Dark** switches between two lighting treatments with a shader effect.
@@ -16,6 +18,8 @@ Open [Shader Switches](https://bhu103-data.github.io/pixel-shader-switches/) or 
 ## Pixel Atlas
 
 Pixel Atlas is an interactive pixel-art travel project built with JavaScript and HTML Canvas. Visitors can explore three animated panoramas, switch seasons, and scrub from sunrise to moonrise or let the skies change automatically. [Open the live demo](https://bhu103-data.github.io/pixel-shader-switches/usa/)
+
+Animation scratch data is reused where practical, resize work is frame-throttled, and resuming the automatic cycle continues from the manually selected season and light state instead of jumping ahead.
 
 - **New York** features the No. 7 train, the Statue of Liberty, and a scripted superhero encounter that plays forward and in reverse.
 - **Alaska** features the northern lights, seasonal snowfall, wildlife, and fish jumping in a glacial fjord.
