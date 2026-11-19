@@ -3,6 +3,16 @@
 - [Original pixel shader switches](https://bhu103-data.github.io/pixel-shader-switches/)
 - [Pixel Atlas for New York, Alaska, and Las Vegas](https://bhu103-data.github.io/pixel-shader-switches/usa/)
 
+## Original Shader Switches
+
+Three interactive scenes explore pixel art, light, and tactile controls in a single HTML file.
+
+- **Lujiazui Focus Switch** changes the lights and atmosphere of the Shanghai skyline.
+- **Beijing Four Seasons Scroll** moves through seasonal variations of a Beijing panorama.
+- **Light & Dark** switches between two lighting treatments with a shader effect.
+
+Open [Shader Switches](https://bhu103-data.github.io/pixel-shader-switches/) or serve `index.html` from the repository root.
+
 ## Pixel Atlas
 
 Open `usa/index.html` to sign in or continue as a guest. `usa/scene.html` contains the fullscreen panoramas. Explore the No. 7 train, the Statue of Liberty, and the Elementals in New York, then switch to Alaska for wildlife, the northern lights, and snowfall. Fish leap from the water in both scenes. Las Vegas adds the Strip, the Sphere, the High Roller, and choreographed fountains.
