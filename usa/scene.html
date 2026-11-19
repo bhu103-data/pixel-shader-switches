@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Animated fullscreen pixel panoramas of New York, Alaska, and Las Vegas.">
 <title>Explore the Maps | Pixel Atlas</title>
-<link rel="stylesheet" href="style.css?v=manhattan-tour">
-<script src="atlas.js?v=manhattan-tour" defer></script>
+<link rel="stylesheet" href="style.css?v=manhattan-3d">
+<script src="atlas.js?v=manhattan-3d" defer></script>
 </head>
 <body>
 <main id="stage" aria-label="Fullscreen pixel panorama">
@@ -14,6 +14,10 @@
     <canvas id="twilight" width="640" height="288"></canvas>
     <canvas id="night" width="640" height="288"></canvas>
   </div>
+  <div id="manhattan-3d" hidden tabindex="0" aria-label="Manhattan flight. Drag to steer, or use the arrow keys. Plus and minus change throttle." aria-describedby="flight-help">
+    <p id="flight-help">Drag or use arrow keys to fly · + / − throttle</p>
+  </div>
+  <p id="manhattan-3d-status" role="status"></p>
   <div class="top">
     <nav aria-label="Regions">
       <button data-region="ny" aria-pressed="true">New York</button>
@@ -31,6 +35,7 @@
           <option value="air">Skyline flyover</option>
           <option value="rail">Line 7 · Train</option>
           <option value="street">Yellow cab · Street</option>
+          <option value="three" selected>Fly Manhattan · 3D</option>
         </select>
       </label>
       <label for="light">Dawn <input id="light" type="range" min="0" max="100" value="0" aria-label="Time of day"> Next dawn</label>
