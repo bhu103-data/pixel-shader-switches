@@ -321,30 +321,10 @@ function nyLandscape(){
   skyline(95,172,false);
   skyline(97,110,true);
   const tower=state.night?'#252b42':'#51495d';
-  const limestone=state.night?'#62637c':'#b19398';
-  const steel=state.night?'#9baaca':'#e3c9c2';
-  const window=state.night?'#ffce87':'#76596e';
-  // Empire State Building: setbacks, observation deck and broadcast mast.
-  rect(141,48,24,48,tower);
-  rect(145,39,17,54,limestone);
-  rect(149,32,9,10,limestone);
-  rect(150,28,6,5,steel);
-  rect(152,21,1,8,steel);
-  rect(147,37,13,2,steel);
-  for(let y=43;y<93;y+=4) for(const x of [147,151,155,159]){
-    rect(x,y,1,2,(x+y)%7===0?tower:window);
-  }
-  // Chrysler Building: stainless-steel crown and dark triangular insets.
-  rect(174,54,15,41,tower);
-  pixels([[174,54],[175,49],[178,46],[180,41],[181,36],[183,41],[185,46],[188,49],[189,54]],steel);
-  rect(181,30,1,8,steel);
-  for(const [x,y] of [[181,42],[178,48],[183,48],[176,52],[181,52],[186,52]]) rect(x,y,2,1,tower);
-  for(let y=57;y<92;y+=4) for(const x of [177,181,185]) rect(x,y,1,2,window);
-  // One World Trade Center: tapered glass faces and antenna.
-  pixels([[248,95],[251,45],[263,45],[268,95]],state.night?'#374863':'#728ca0');
-  pixels([[251,45],[263,45],[257,95],[248,95]],state.night?'#4d6483':'#a0a6b1');
-  rect(256,34,1,11,steel);
-  for(let y=49;y<90;y+=4) rect(253,y,8,1,state.night?'#8395af':'#bdacb5');
+  rect(146,39,13,63,tower);
+  rect(149,31,7,9,tower);
+  rect(152,21,1,11,'#c4a3ab');
+  for(let y=43;y<94;y+=4) rect(149,y,2,1,state.night?'#f1c379':'#a17d89');
   water(95);
   // One shore curves from the park through Midtown into the river.
   pixels([[0,109],[28,98],[61,101],[105,104],[135,98],[171,99],[185,107],[213,114],[203,144],[0,144]],foliage[state.season][0]);
@@ -403,20 +383,16 @@ function nyLandscape(){
     rect(x-1,113,3,2,state.night?'#ffe2a0':'#c9a28f');
     if(state.night) rect(x-2,114,5,1,'#e9b66f');
   }
-}
-
-function nyCab(cabX,night){
-  rect(cabX,122,22,5,night?'#b17b3e':'#e0a74b');
-  pixels([[cabX+4,122],[cabX+8,119],[cabX+16,119],[cabX+19,122]],night?'#a1764a':'#f0c569');
-  rect(cabX+9,120,6,2,night?'#566077':'#6b7180');
+  // A tiny yellow cab passes under the elevated line.
+  const cabX=((elapsed*18)%370)-38;
+  rect(cabX,122,22,5,state.night?'#b17b3e':'#e0a74b');
+  pixels([[cabX+4,122],[cabX+8,119],[cabX+16,119],[cabX+19,122]],state.night?'#a1764a':'#f0c569');
+  rect(cabX+9,120,6,2,state.night?'#566077':'#6b7180');
   rect(cabX+1,127,4,2,'#242536'); rect(cabX+16,127,4,2,'#242536');
   rect(cabX+10,118,3,1,'#fff0b0');
-  rect(cabX+19,123,3,1,'#fff0b0');
-  rect(cabX,123,2,1,'#a94355');
 }
 
 function alaskaLandscape(){
-  const night=state.night;
   mountains(true);
   water(103,true);
   pixels([[0,92],[55,81],[94,95],[120,93],[134,103],[119,114],[138,144],[0,144]],foliage[state.season][0]);
@@ -1117,7 +1093,7 @@ function vegasTrafficPosition(time,index){
   const span=352;
   const travel=offset+time*speed;
   const pass=Math.floor(travel/span);
-  const paint=rng(701+index*1931+pass*7919);
+  const paint=rng(701+index*97+pass*7919);
   return {x:travel-pass*span-16,lane,style:Math.floor(paint()*4)};
 }
 
@@ -1227,7 +1203,7 @@ function vegasMotion(time,night,displayTime,bonusTime,skyTop){
     }
   }
   vegasWheelQueue(displayTime,reacting);
-  // Street traffic uses forward time independently of the reversible story.
+  // Street traffic uses forward time even when the scene soundtrack loops back.
   for(let index=0;index<vegasTrafficLanes.length;index++){
     const {x,lane,style}=vegasTrafficPosition(displayTime,index);
     vegasSportsCar(x,lane,style,night);
@@ -1236,7 +1212,7 @@ function vegasMotion(time,night,displayTime,bonusTime,skyTop){
 }
 
 const regions={
-  ny:{name:'Manhattan',description:'A stylized New York panorama with the Empire State Building, the Chrysler Building, One World Trade Center, Times Square, the Statue of Liberty, Brooklyn Bridge, and the 7 train.',landscape:nyLandscape,horizon:'#293247'},
+  ny:{name:'New York',description:'New York skyline with the Statue of Liberty, Brooklyn Bridge, Central Park, Times Square, an elevated train, four Elementals, Iron Spider, and Mysterio.',landscape:nyLandscape,horizon:'#293247'},
   ak:{name:'Alaska',description:'Alaska with snowy peaks, a glacial fjord, a cabin in the woods, a moose, and a brown bear.',landscape:alaskaLandscape,horizon:'#20323e'},
   lv:{name:'Las Vegas',description:'The neon Strip, the animated Sphere, fountains, and the High Roller with riders and a boarding platform. After a 777 jackpot, pedestrians collect bills and coins and leave in yellow cabs.',landscape:vegasLandscape,horizon:'#1c1d33'}
 };
@@ -1794,8 +1770,6 @@ function warningLabel(time,chapter){
 }
 
 const stage=$('#stage');
-const manhattanView=$('#manhattan-view');
-const manhattanControls=$('#manhattan-controls');
 const motion=$('#motion');
 const alert=$('#alert');
 const fullscreen=$('#fullscreen');
@@ -1860,36 +1834,8 @@ function prepare(){
     regions[state.region].landscape();
   }
 }
-function updateManhattanCamera(tourTime,trainX,cabX){
-  const mode=state.region==='ny'?manhattanView.value:'wide';
-  const layer=layers[0];
-  let zoom=1,x=160,y=72;
-  if(mode==='air'){
-    zoom=1.35;
-    x=160-110*Math.cos(tourTime*Math.PI/18);
-    y=47;
-  }else if(mode==='rail'){
-    zoom=1.65;
-    x=lerp(trainX+238,-20,smooth((trainX-322)/100));
-    y=98;
-  }else if(mode==='street'){
-    zoom=1.8;
-    x=lerp(cabX+13,-20,smooth((cabX-322)/68));
-    y=106;
-  }
-  // Clamp the scale origin so no empty edges enter the viewport.
-  const origin=focus=>zoom===1?.5:clamp((focus*zoom-.5)/(zoom-1));
-  stage.style.setProperty('--view-scale',zoom);
-  stage.style.setProperty('--view-x',origin(x/320)*100+'%');
-  stage.style.setProperty('--view-y',origin((y*2+layer.offset)/layer.canvas.height)*100+'%');
-}
-
 function draw(){
   const time=storyTime();
-  const tourTime=elapsed-nyStoryStart;
-  const trainX=trainPosition(tourTime%(680/13.9));
-  const cabX=(tourTime*18+75)%428-38;
-  updateManhattanCamera(tourTime,trainX,cabX);
   const vegasTime=elapsed-vegasDisplayStart;
   const bonusTime=(vegasTime-bonusStart+bonusWarningDuration)%bonusInterval-bonusWarningDuration;
   const vegasLucky=state.region==='lv' && bonusTime>=-bonusWarningDuration && bonusTime<0;
@@ -1911,10 +1857,10 @@ function draw(){
     ctx.setTransform(2,0,0,2,0,layer.offset);
     if(snow) snowfall(layer,false);
     if(state.region==='ny'){
+      const trainX=trainPosition(time);
       if(nyDanger) cityWarning(time,alarmProgress);
       chapter=elementScenes(time);
       smallFish(time,index===1);
-      nyCab(cabX,index===1);
       transformed(0,39,1,()=>{
         train(trainX,index===1);
         rect(trainX+238,67,7,7,'#864ca8');
@@ -1961,7 +1907,6 @@ function syncAnimation(){
 }
 function render(){
   const region=regions[state.region];
-  manhattanControls.hidden=state.region!=='ny';
   $('#landmark').textContent=region.name;
   $('#landscape').setAttribute('aria-label',region.description);
   document.querySelectorAll('[data-region]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.region===state.region)));
@@ -1969,7 +1914,6 @@ function render(){
   draw();
   syncAnimation();
 }
-manhattanView.addEventListener('change',draw);
 $('nav').addEventListener('click',event=>{
   const place=event.target.closest('[data-region]')?.dataset.region;
   if(!Object.hasOwn(regions,place) || state.region===place) return;

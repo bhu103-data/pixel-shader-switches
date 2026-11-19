@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Animated fullscreen pixel panoramas of New York, Alaska, and Las Vegas.">
 <title>Explore the Maps | Pixel Atlas</title>
-<link rel="stylesheet" href="style.css?v=manhattan-tour">
-<script src="atlas.js?v=manhattan-tour" defer></script>
+<link rel="stylesheet" href="style.css">
+<script src="atlas.js?v=vegas-forward-traffic" defer></script>
 </head>
 <body>
 <main id="stage" aria-label="Fullscreen pixel panorama">
@@ -23,16 +23,8 @@
     <div class="top-actions"><a href="./index.html" class="account-link">Account</a><button id="fullscreen" aria-pressed="false">Fullscreen</button></div>
   </div>
   <section class="bottom" aria-label="Scene controls">
-    <div class="caption"><h1 id="landmark">Manhattan</h1><p id="alert" role="status"></p></div>
+    <div class="caption"><h1 id="landmark">New York</h1><p id="alert" role="status"></p></div>
     <div class="controls">
-      <label for="manhattan-view" id="manhattan-controls">View
-        <select id="manhattan-view">
-          <option value="wide">Panorama</option>
-          <option value="air">Skyline flyover</option>
-          <option value="rail">Line 7 · Train</option>
-          <option value="street">Yellow cab · Street</option>
-        </select>
-      </label>
       <label for="light">Dawn <input id="light" type="range" min="0" max="100" value="0" aria-label="Time of day"> Next dawn</label>
       <label for="season">Season
         <select id="season"><option value="0">Spring</option><option value="1">Summer</option><option value="2">Fall</option><option value="3">Winter</option></select>

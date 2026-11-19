@@ -8,7 +8,6 @@ button,select{cursor:pointer}
 .world{position:absolute;inset:0;display:grid;place-items:center}
 .world::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(#12182980,transparent 23%,transparent 65%,#0b14248a 100%)}
 canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated}
-.world canvas{transform:scale(var(--view-scale,1));transform-origin:var(--view-x,50%) var(--view-y,50%)}
 #night{opacity:var(--light,.25)}
 .top,.bottom{position:absolute;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;left:clamp(12px,3vw,42px);right:clamp(12px,3vw,42px)}
 .top{top:max(14px,env(safe-area-inset-top))}
