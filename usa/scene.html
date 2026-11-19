@@ -6,7 +6,7 @@
 <meta name="description" content="Animated fullscreen pixel panoramas of New York, Alaska, and Las Vegas.">
 <title>Explore the Maps | Pixel Atlas</title>
 <link rel="stylesheet" href="style.css">
-<script src="atlas.js" defer></script>
+<script src="atlas.js?v=day-cycle" defer></script>
 </head>
 <body>
 <main id="stage" aria-label="Fullscreen pixel panorama">
@@ -25,7 +25,7 @@
   <section class="bottom" aria-label="Scene controls">
     <div class="caption"><h1 id="landmark">New York</h1><p id="alert" role="status"></p></div>
     <div class="controls">
-      <label for="light">Dusk <input id="light" type="range" min="0" max="100" value="25" aria-label="Dusk to night"> Night</label>
+      <label for="light">Dawn <input id="light" type="range" min="0" max="100" value="0" aria-label="Time of day"> Next dawn</label>
       <label for="season">Season
         <select id="season"><option value="0">Spring</option><option value="1">Summer</option><option value="2">Fall</option><option value="3">Winter</option></select>
       </label>

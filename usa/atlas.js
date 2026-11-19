@@ -37,6 +37,7 @@ const twilightPalettes={
   ak:[[0x334c77,0xa0c0cc],[0x364d7b,0xe8b6a5],[0x243b68,0xbca1b6],[0x2c426b,0x93b6d1]],
   lv:[[0x4e4a79,0xf1ad91],[0x4c426e,0xffb777],[0x563b65,0xe4a07d],[0x41436b,0xdeb1ac]]
 };
+const daylightPalettes={ny:['#467db4','#f8d6ba'],ak:['#477fae','#c8e4e4'],lv:['#557cad','#f9cca7']};
 function sky(){
   const alaska=state.region==='ak';
   const nightHorizon = [0x3d3b59,0x393153,0x343453,0x38506c];
@@ -53,17 +54,36 @@ function sky(){
     }
   }
 }
-function celestialBody(lightLevel){
-  const phase=smooth((lightLevel-.34)/.66);
-  const radius=lerp(15,10,phase);
-  const cx=254,cy=30;
-  const tint=phase;
-  for(let row=-Math.floor(radius);row<=Math.floor(radius);row++){
-    const right=Math.sqrt(radius*radius-row*row);
-    // The lit edge stays on the right as the daylight disk narrows to a crescent.
-    const left=lerp(-right,right*.23,phase);
-    const color=mix(row<4?0xfff1bb:0xffc287,row<1?0xf0f6ed:0xbdd1e6,tint);
-    const first=Math.ceil(left),last=Math.floor(right);
+function daylight(offset){
+  const top=-offset/2;
+  const gradient=ctx.createLinearGradient(0,top,0,96);
+  const [zenith,horizon]=daylightPalettes[state.region];
+  gradient.addColorStop(0,zenith);
+  gradient.addColorStop(1,horizon);
+  ctx.save();
+  ctx.globalAlpha=.86*smooth(Math.sin(skyPhase*2*Math.PI));
+  rect(0,top,320,144-top,gradient);
+  ctx.restore();
+}
+function celestialBody(phase){
+  const moon=phase>=.5;
+  const crossing=(phase%.5)*2;
+  // East is on the right. The arc starts and ends below the visible horizon.
+  const cx=Math.round(285-250*crossing);
+  const cy=Math.round(108-(moon?86:88)*Math.sin(Math.PI*crossing));
+  const radius=moon?10:14;
+  for(let row=-radius;row<radius;row++){
+    const y=row+.5;
+    const edge=Math.sqrt(radius*radius-y*y);
+    let left=-edge;
+    // An offset round shadow leaves the Moon's lit limb and curved inner edge.
+    const shadowY=y+2;
+    if(moon && Math.abs(shadowY)<radius){
+      left=Math.max(left,-4+Math.sqrt(radius*radius-shadowY*shadowY));
+    }
+    const first=Math.ceil(left-.5),last=Math.floor(edge-.5);
+    const color=moon?mix(0xf7f6e5,0xc5d9eb,(row+radius)/(2*radius))
+      :mix(0xfff4c0,0xffb876,(row+radius)/(2*radius));
     if(first<=last) rect(cx+first,cy+row,last-first+1,1,color);
   }
 }
@@ -166,13 +186,13 @@ function train(offset, night){
   rect(offset+241,76,4,3,'#fff1ad');
 }
 
-function moose(step,night,drink,moving){
-  const coat = night ? '#50383d' : '#754836';
-  const antler = night ? '#9a827a' : '#c0a084';
+function moose(step,drink,moving){
+  const coat='#754836';
+  const antler='#c0a084';
   rect(120,95,54,22,coat);
   for(const [i,x] of [124,136,158,170].entries()){
     const stride=Math.round(Math.sin(step+i*Math.PI/2)*4*moving);
-    pixels([[x,112],[x+5,112],[x+stride+4,128],[x+stride-1,128]],i%2?(night?'#423039':'#583b32'):coat);
+    pixels([[x,112],[x+5,112],[x+stride+4,128],[x+stride-1,128]],i%2?'#583b32':coat);
     rect(x+stride-1,127,5,2,'#382b33');
   }
   ctx.save();
@@ -192,8 +212,8 @@ function moose(step,night,drink,moving){
   ctx.restore();
 }
 
-function bear(night,reach){
-  const fur = night?'#503944':'#805743';
+function bear(reach){
+  const fur='#805743';
   pixels([[124,101],[132,86],[152,82],[162,88],[172,91],[171,104],[164,113],[130,113]],fur);
   rect(137,108,6,12,fur);
   rect(154,106,6,13,fur);
@@ -372,7 +392,7 @@ function smallFish(time,night){
       ctx.translate(Math.round(bodyX),Math.round(bodyY));
       ctx.scale(Math.sign(travel),1);
       ctx.rotate(Math.atan(slope));
-      pixels([[-3,0],[-5,-2],[-5,2],[-3,1],[-1,2],[2,1],[3,0],[1,-2],[-2,-1]],night?'#83b3c5':'#a8dce0');
+      pixels([[-3,0],[-5,-2],[-5,2],[-3,1],[-1,2],[2,1],[3,0],[1,-2],[-2,-1]],'#9dcfda');
       rect(-1,1,2,1,'#eff6de');
       rect(1,-1,1,1,'#263747');
       ctx.restore();
@@ -391,7 +411,6 @@ function smallFish(time,night){
 }
 
 function alaskaMotion(time,night){
-  if(night) aurora(time);
   for(let i=0;i<18;i++){
     const x=196+i*3;
     const y=110+(time*(7+i%3)+i*3)%11;
@@ -401,7 +420,7 @@ function alaskaMotion(time,night){
   const moving=smooth((time-1.6)/1.1)*(1-smooth((time-10.9)/1.2));
   const drink=smooth((time-12.05)/1.35)*(1-smooth((time-18.4)/1.55));
   const mooseX=-44+walk*35;
-  transformed(mooseX,25,.76,()=>moose(walk*12*Math.PI,night,drink,moving));
+  transformed(mooseX,25,.76,()=>moose(walk*12*Math.PI,drink,moving));
   if(drink>.7){
     const spread=2+(time*5)%7;
     ctx.save();
@@ -412,7 +431,7 @@ function alaskaMotion(time,night){
   }
   const leap=(time+.3)%5.7;
   const spot=smooth((leap-1.15)/.25)*(1-smooth((leap-2.58)/.68));
-  transformed(122,42,.66,()=>bear(night,spot));
+  transformed(122,42,.66,()=>bear(spot));
   const waterColor=night?'#94bac7':'#c6e7e7';
   if(leap>=.85 && leap<1.58){
     const pre=(leap-.85)/.73;
@@ -421,7 +440,7 @@ function alaskaMotion(time,night){
   if(leap>=1.45 && leap<2.4){
     const p=(leap-1.45)/.95;
     const x=222+21*p,y=120-45*p*(1-p);
-    line(x-3,y+2,x+4,y-1,night?'#c4a0aa':'#f1b5a8');
+    line(x-3,y+2,x+4,y-1,'#f1b5a8');
     rect(x-4,y+1,2,3,'#c97979');
     rect(x+2,y,2,2,'#e9d4bc');
   }
@@ -437,8 +456,8 @@ function alaskaMotion(time,night){
   for(let i=0;i<3;i++){
     const x=-20+time*14+i*10,y=23+i*4+Math.sin(time*.55)*4;
     const wing=Math.sin(time*6+i)*2;
-    line(x-3,y-wing,x,y+1,night?'#8682a1':'#343d57');
-    line(x,y+1,x+3,y-wing,night?'#8682a1':'#343d57');
+    line(x-3,y-wing,x,y+1,'#6d7891');
+    line(x,y+1,x+3,y-wing,'#6d7891');
   }
 }
 
@@ -1092,12 +1111,13 @@ const cycle=$('#cycle');
 const season=$('#season');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let paused=reduced.matches, automatic=true, frame=0, elapsed=0, last=null, vegasDisplayStart=0;
-let lightLevel=.15;
+let skyPhase=0;
+const dayDuration=12;
 const layers=[canvas,nightCanvas].map(target=>{
-  const buffer=document.createElement('canvas');
-  buffer.width=target.width;
-  buffer.height=target.height;
-  return {canvas:target,target:target.getContext('2d',{alpha:false}),buffer,base:buffer.getContext('2d',{alpha:false})};
+  const skyBuffer=document.createElement('canvas');
+  const terrain=document.createElement('canvas');
+  skyBuffer.width=terrain.width=target.width;
+  return {canvas:target,target:target.getContext('2d',{alpha:false}),skyBuffer,terrain};
 });
 const snowRandom=rng(204);
 const flakes=Array.from({length:88},()=>[snowRandom()*320,snowRandom()*144,7+snowRandom()*14,snowRandom()*6.28]);
@@ -1107,21 +1127,22 @@ function prepare(){
   const height=Math.max(288,Math.min(1800,Math.round(640*stage.clientHeight/Math.max(1,stage.clientWidth))));
   for(const [index,layer] of layers.entries()){
     state.night=index===1;
-    ctx=layer.base;
     layer.canvas.height=height;
-    layer.buffer.height=height;
+    layer.skyBuffer.height=height;
+    layer.terrain.height=height;
     layer.offset=Math.round((height-288)*.45);
-    const horizon=regions[state.region].horizon;
-    ctx.fillStyle=horizon;
-    ctx.fillRect(0,0,640,height);
+    ctx=layer.skyBuffer.getContext('2d',{alpha:false});
     ctx.fillStyle=state.night?'#0a1029':mix(twilightPalettes[state.region][state.season][0],0,0);
-    ctx.fillRect(0,0,640,layer.offset);
+    ctx.fillRect(0,0,640,height);
     if(state.night && layer.offset>0){
       const random=rng(414);
       for(let i=0;i<95;i++) rect(random()*640,random()*layer.offset,1,1,i%5?'#737b9d':'#e6e6e6');
     }
     ctx.setTransform(2,0,0,2,0,layer.offset);
     sky();
+    ctx=layer.terrain.getContext('2d');
+    rect(0,layer.offset+288,640,height-layer.offset-288,regions[state.region].horizon);
+    ctx.setTransform(2,0,0,2,0,layer.offset);
     regions[state.region].landscape();
   }
 }
@@ -1131,9 +1152,14 @@ function draw(){
   for(const [index,layer] of layers.entries()){
     ctx=layer.target;
     ctx.setTransform(1,0,0,1,0,0);
-    ctx.drawImage(layer.buffer,0,0);
+    ctx.drawImage(layer.skyBuffer,0,0);
     ctx.setTransform(2,0,0,2,0,layer.offset);
-    celestialBody(lightLevel);
+    if(index===0 && skyPhase<.5) daylight(layer.offset);
+    if(index===1 && state.region==='ak') aurora(time);
+    celestialBody(skyPhase);
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(layer.terrain,0,0);
+    ctx.setTransform(2,0,0,2,0,layer.offset);
     if(state.region==='ny'){
       const trainX=trainPosition(time);
       cityWarning(time);
@@ -1210,25 +1236,29 @@ function setAutomatic(enabled){
   syncAnimation();
 }
 function updateCycle(){
-  const time=storyTime();
-  const nextSeason=Math.min(3,Math.floor(time/6));
+  const nextSeason=Math.floor(elapsed/dayDuration)%4;
   if(state.season!==nextSeason){
     state.season=nextSeason;
     season.value=String(nextSeason);
     prepare();
   }
-  const lightAmount=time<6 ? Math.sin(Math.PI*time/12)**2 : Math.cos(Math.PI*time/6)**2;
-  lightLevel=.15+.85*lightAmount;
-  light.value=String(Math.round(lightLevel*100));
-  stage.style.setProperty('--light',lightLevel);
+  const phase=(elapsed%dayDuration)/dayDuration;
+  light.value=String(Math.floor(phase*100));
+  setSkyPhase(phase);
+}
+function setSkyPhase(phase){
+  skyPhase=phase%1;
+  const height=Math.sin(skyPhase*2*Math.PI);
+  stage.style.setProperty('--light',smooth((.28-height)/.6));
+  const label=skyPhase<.08?'Sunrise':skyPhase<.42?'Daylight':skyPhase<.53?'Sunset':skyPhase<.68?'Moonrise':skyPhase<.92?'Night':'Before dawn';
+  if(light.getAttribute('aria-valuetext')!==label) light.setAttribute('aria-valuetext',label);
 }
 cycle.addEventListener('click',()=>setAutomatic(!automatic));
-function setLight(){
-  lightLevel=Number(light.value)/100;
-  stage.style.setProperty('--light',lightLevel);
+light.addEventListener('input',()=>{
+  setAutomatic(false);
+  setSkyPhase(Number(light.value)/100);
   draw();
-}
-light.addEventListener('input',()=>{setAutomatic(false);setLight()});
+});
 season.addEventListener('change',event=>{
   setAutomatic(false);
   state.season=Number(event.target.value);
