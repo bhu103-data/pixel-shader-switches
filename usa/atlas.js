@@ -178,8 +178,17 @@ function train(offset, night){
       rect(door+1,64,10,7,glass);
     }
     rect(x+1,59,79,2,'#dee0df');
+    rect(x+33,58,15,1,night?'#d6b5a0':'#aeb4bc');
+    rect(x+39,59,5,1,night?'#ffe3a2':'#5e6572');
+    rect(x+43,60,1,3,night?'#ffe3a2':'#5e6572');
     rect(x+7,83,12,3,'#151922');
     rect(x+59,83,12,3,'#151922');
+    rect(x+4,58,3,1,night?'#ffd889':'#e7b76e');
+    rect(x+73,58,3,1,night?'#ffd889':'#e7b76e');
+    for(const wheel of [x+15,x+66]){
+      rect(wheel,84,5,2,'#222432');
+      rect(wheel+1,84,2,1,night?'#7489a4':'#6d7180');
+    }
   }
   rect(offset+237,60,11,16,'#304567');
   rect(offset+240,63,5,4,'#7ea5e2');
@@ -427,6 +436,13 @@ function alaskaLandscape(){
   line(boatX,boatY,boatX,boatY-9,'#4c5364');
   pixels([[boatX+1,boatY-8],[boatX+8,boatY-4],[boatX+1,boatY-3]],night?'#b5d6e0':'#d5d9d4');
   rect(boatX-4,boatY-1,2,1,night?'#f5d18b':'#bd8b75');
+  if(state.season===3){
+    // Snow sits on the cabin roof and shoreline instead of recolouring the animals.
+    line(276,102,288,94,'#edf6f6');
+    line(288,94,303,102,'#edf6f6');
+    rect(275,113,29,2,'#d6e8ed');
+    rect(263,117,14,1,'#c4dce3');
+  }
 }
 
 const smallFishJumps={
@@ -1028,6 +1044,17 @@ function vegasMotion(time,night,displayTime,bonusTime,skyTop){
       rect(x+sway,y-drop,jet%3===0?2:1,1,drop%4===0?waterColor:'#7caecc');
     }
     rect(x-1,y,3,1,'#94b9ce');
+  }
+  // Neon reflections ripple across the wet Strip pavement.
+  if(night){
+    for(let i=0;i<18;i++){
+      const x=38+(i*29+Math.sin(time*.7+i)*5)%260;
+      const y=123+(i%4)*3;
+      ctx.save();
+      ctx.globalAlpha=.18+.08*Math.sin(time*1.4+i)**2;
+      rect(x,y,3+(i%3)*2,1,i%3===0?'#e97bb4':i%3===1?'#7cdce2':'#f5cb78');
+      ctx.restore();
+    }
   }
   vegasWheelQueue(displayTime,reacting);
   for(const [offset,velocity,lane,color] of [[-20,21,126,'#ca8aa8'],[118,18,126,'#bbb8ce'],[290,-26,138,'#608dac']]){
