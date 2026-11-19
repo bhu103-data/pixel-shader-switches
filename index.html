@@ -647,6 +647,10 @@
     const FULL_H = CORE_H + PAD * 2;
     const idxBuf = new Uint8Array(FULL_W * FULL_H);
     const rgbaBuf = new Uint8Array(FULL_W * FULL_H * 4);
+    const fallbackBitmap = document.createElement('canvas');
+    fallbackBitmap.width = FULL_W; fallbackBitmap.height = FULL_H;
+    const fallbackBitmapCtx = fallbackBitmap.getContext('2d');
+    const fallbackImageData = new ImageData(new Uint8ClampedArray(rgbaBuf), FULL_W, FULL_H);
     const emitGrid = new Float32Array(72 * 42 * 3);
     const lightRgba = new Uint8Array(72 * 42 * 4);
 
@@ -1740,11 +1744,10 @@
         ctx.beginPath();
         ctx.roundRect((cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
         ctx.clip();
-        const off = document.createElement('canvas');
-        off.width = FULL_W; off.height = FULL_H;
-        off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgbaBuf), FULL_W, FULL_H), 0, 0);
+        fallbackImageData.data.set(rgbaBuf);
+        fallbackBitmapCtx.putImageData(fallbackImageData, 0, 0);
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(off, (cw - CORE_W*k)*0.5 - PAD*k, (ch - CORE_H*k)*0.5 - PAD*k, FULL_W*k, FULL_H*k);
+        ctx.drawImage(fallbackBitmap, (cw - CORE_W*k)*0.5 - PAD*k, (ch - CORE_H*k)*0.5 - PAD*k, FULL_W*k, FULL_H*k);
         ctx.fillStyle = 'rgba(255,255,255,0.28)';
         ctx.beginPath();
         ctx.arc(lensX, ch * 0.5, lensRad, 0, Math.PI * 2);
@@ -1849,6 +1852,10 @@
     const fullH = CORE_H + PAD * 2;
     let idxBuf = new Uint8Array(fullW * fullH);
     let rgbaBuf = new Uint8Array(fullW * fullH * 4);
+    const fallbackBitmap = document.createElement('canvas');
+    fallbackBitmap.width = fullW; fallbackBitmap.height = fullH;
+    const fallbackBitmapCtx = fallbackBitmap.getContext('2d');
+    let fallbackImageData = new ImageData(new Uint8ClampedArray(rgbaBuf), fullW, fullH);
     const emitGrid = new Float32Array(144 * 44 * 3);
     const lightRgba = new Uint8Array(144 * 44 * 4);
 
@@ -2936,11 +2943,15 @@
         ctx.beginPath();
         ctx.roundRect((cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
         ctx.clip();
-        const off = document.createElement('canvas');
-        off.width = fullW; off.height = fullH;
-        off.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgbaBuf), fullW, fullH), 0, 0);
+        if (fallbackBitmap.width !== fullW || fallbackBitmap.height !== fullH) {
+          fallbackBitmap.width = fullW; fallbackBitmap.height = fullH;
+          fallbackImageData = new ImageData(new Uint8ClampedArray(rgbaBuf), fullW, fullH);
+        } else {
+          fallbackImageData.data.set(rgbaBuf);
+        }
+        fallbackBitmapCtx.putImageData(fallbackImageData, 0, 0);
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(off, (cw - winW)*0.5 - PAD*k, (ch - CORE_H*k)*0.5 - PAD*k, fullW*k, fullH*k);
+        ctx.drawImage(fallbackBitmap, (cw - winW)*0.5 - PAD*k, (ch - CORE_H*k)*0.5 - PAD*k, fullW*k, fullH*k);
         ctx.fillStyle = 'rgba(255,255,255,0.28)';
         ctx.beginPath();
         ctx.arc(lensX, ch * 0.5, lensRad, 0, Math.PI * 2);
