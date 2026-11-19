@@ -1203,7 +1203,10 @@ function setAutomatic(enabled){
   automatic=enabled;
   cycle.setAttribute('aria-pressed',String(enabled));
   cycle.textContent=enabled?'Auto cycle':'Manual';
-  if(enabled) updateCycle();
+  if(enabled){
+    updateCycle();
+    draw();
+  }
   syncAnimation();
 }
 function updateCycle(){
