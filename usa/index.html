@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Sign in or continue as a guest to explore New York, Alaska, and Las Vegas in Pixel Atlas.">
-<title>Sign in | Pixel Atlas</title>
+<meta name="description" content="Explore New York, Alaska, and Las Vegas in Pixel Atlas. Continue as a guest without an account.">
+<title>Enter Pixel Atlas</title>
 <link rel="stylesheet" href="./entry.css">
 <script type="module" src="./auth.js"></script>
 </head>
@@ -22,10 +22,9 @@
  <div class="entry-side">
  <div class="panel">
   <header>
-   <p class="section-label">Your account</p>
    <h2>Enter Pixel Atlas</h2>
   </header>
-  <section id="auth" aria-label="Account">
+  <section id="auth" aria-label="Account" hidden>
    <div class="choices" role="group" aria-label="Sign-in or registration">
     <button type="button" data-mode="login" aria-pressed="true">Sign in</button>
     <button type="button" data-mode="register" aria-pressed="false">Create account</button>
@@ -51,7 +50,7 @@
    <a class="primary" href="./scene.html">Enter Pixel Atlas</a>
    <button type="button" id="logout">Sign out</button>
   </section>
-  <p id="status" role="status">Account sign-in is currently unavailable. You can still continue as a guest.</p>
+  <p id="status" role="status"></p>
   <div class="guest-area">
    <a id="guest" class="guest" href="./scene.html">Continue as a guest</a>
   </div>
