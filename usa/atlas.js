@@ -1056,9 +1056,13 @@ function vegasPerson(x,y,person,skin,bend,stride,holding,surprised=false){
 }
 
 function vegasSportsCar(x,lane,style,night){
+  transformed(x,lane,.72,()=>vegasSportsCarSprite(style,night));
+}
+
+function vegasSportsCarSprite(style,night){
   const palettes=[['#d84c63','#f28a78'],['#4b87bc','#7cd6df'],['#c58b42','#f4cb6d'],['#8e67bb','#d49bf0']];
   const [body,highlight]=palettes[style%palettes.length];
-  const y=lane;
+  const x=0,y=0;
   rect(x-13,y+5,27,2,'#202033');
   if(style%4===0){
     pixels([[x-13,y+4],[x-9,y],[x-3,y-3],[x+7,y-3],[x+13,y+2],[x+14,y+5]],body);
@@ -1078,7 +1082,19 @@ function vegasSportsCar(x,lane,style,night){
     rect(wheel-2,y+4,4,3,'#202033');
     rect(wheel-1,y+4,2,1,night?'#b5bfd4':'#8e8d9e');
   }
-  rect(x+(style%2?10:-11),y+1,2,1,night?'#ffe6ac':'#f3c770');
+  // All sprites face right. The lamp positions follow the body, never the paint.
+  rect(11,2,2,1,night?'#fff0bb':'#f9d6a1');
+  rect(-12,2,2,1,night?'#ff7795':'#ad3e56');
+}
+
+const vegasTrafficLanes=[[22,19,127],[192,19,127],[106,24,137]];
+function vegasTrafficPosition(time,index){
+  const [offset,speed,lane]=vegasTrafficLanes[index];
+  const span=352;
+  const travel=offset+time*speed;
+  const pass=Math.floor(travel/span);
+  const paint=rng(701+index*97+pass*7919);
+  return {x:travel-pass*span-16,lane,style:Math.floor(paint()*4)};
 }
 
 function vegasCab(x,night,door){
@@ -1187,9 +1203,9 @@ function vegasMotion(time,night,displayTime,bonusTime,skyTop){
     }
   }
   vegasWheelQueue(displayTime,reacting);
-  for(const [offset,velocity,lane] of [[-20,21,126],[118,18,126],[290,-26,138]]){
-    const x=((offset+velocity*time)%356+356)%356-18;
-    const style=(Math.floor((time+Math.abs(offset)*.01)*.32)+Math.abs(offset))%4;
+  // Street traffic uses forward time even when the scene soundtrack loops back.
+  for(let index=0;index<vegasTrafficLanes.length;index++){
+    const {x,lane,style}=vegasTrafficPosition(displayTime,index);
     vegasSportsCar(x,lane,style,night);
   }
   vegasStreetActivity(bonusTime,night,skyTop);
