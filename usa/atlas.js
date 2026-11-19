@@ -466,7 +466,8 @@ const vegasGlyphs={
   L:['100','100','100','100','111'],A:['010','101','111','101','101'],S:['111','100','111','001','111'],
   V:['101','101','101','101','010'],E:['111','100','110','100','111'],G:['111','100','101','101','111'],
   J:['001','001','001','101','111'],C:['111','100','100','100','111'],K:['101','101','110','101','101'],
-  P:['110','101','110','100','100'],O:['111','101','101','101','111'],T:['111','010','010','010','010']
+  P:['110','101','110','100','100'],O:['111','101','101','101','111'],T:['111','010','010','010','010'],
+  B:['110','101','110','101','110'],N:['101','111','111','111','101'],U:['101','101','101','101','111']
 };
 function vegasText(text,x,y,color){
   for(const [index,letter] of [...text].entries()){
@@ -637,6 +638,9 @@ function vegasSphere(elapsed,night){
 }
 
 const jackpotAt=3.8;
+const bonusStart=8;
+const bonusInterval=36;
+const bonusMarqueeEnd=8.6;
 const jackpotRandom=rng(777);
 const jackpotRain=Array.from({length:118},(_,index)=>{
   const bill=index%3===0;
@@ -664,7 +668,7 @@ function jackpotMarquee(time){
   glow.addColorStop(0,'#ffe89e');
   glow.addColorStop(1,'#ffc86c00');
   ctx.save();
-  ctx.globalAlpha=.32*lit;
+  ctx.globalAlpha*=.32*lit;
   rect(87,29,90,90,glow);
   ctx.restore();
   rect(99,76,67,21,'#251c38');
@@ -672,7 +676,7 @@ function jackpotMarquee(time){
   pixels([[97,63],[104,56],[160,56],[167,63],[167,86],[97,86]],mix(0xb76a73,0xffd778,lit));
   rect(100,62,64,22,'#3d294f');
   rect(113,56,38,8,'#36243d');
-  vegasText('JACKPOT',119,57,mix(0xf3b8a3,0xffefad,lit));
+  vegasText(age<0?'BONUS':'JACKPOT',age<0?123:119,57,mix(0xf3b8a3,0xffefad,lit));
   for(let x=101;x<165;x+=4){
     rect(x,85,1,1,mix(0xd3959b,0xffffbe,lit));
   }
@@ -729,6 +733,24 @@ function fallingJackpot(age,skyTop){
   }
 }
 
+function vegasBonus(displayTime,skyTop){
+  const time=(displayTime-bonusStart)%bonusInterval;
+  if(time<0 || time>=13) return;
+  if(time<bonusMarqueeEnd){
+    const enter=smooth(time/.24);
+    const exit=smooth((bonusMarqueeEnd-time)/.7);
+    const scale=.8*(.82+.18*enter);
+    ctx.save();
+    ctx.globalAlpha=enter*exit;
+    ctx.translate(145,28+5*(1-enter));
+    ctx.scale(scale,scale);
+    ctx.translate(-132,-74);
+    jackpotMarquee(time);
+    ctx.restore();
+  }
+  fallingJackpot(time-jackpotAt-.24,skyTop);
+}
+
 function vegasMotion(time,night,displayTime,skyTop){
   vegasSphere(displayTime,night);
   const wheelX=267,wheelY=66,wheelR=23;
@@ -766,15 +788,13 @@ function vegasMotion(time,night,displayTime,skyTop){
       rect(x+(velocity>0?0:9),lane+1,1,1,'#eb7398');
     }
   }
-  const jackpotTime=displayTime%29;
-  jackpotMarquee(jackpotTime);
-  fallingJackpot(jackpotTime-jackpotAt-.24,skyTop);
+  vegasBonus(displayTime,skyTop);
 }
 
 const regions={
   ny:{name:'New York',description:'New York skyline with the Statue of Liberty, Brooklyn Bridge, Central Park, Times Square, an elevated train, four Elementals, Iron Spider, and Mysterio.',landscape:nyLandscape,horizon:'#293247'},
   ak:{name:'Alaska',description:'Alaska with snowy peaks, a glacial fjord, a cabin in the woods, a moose, and a brown bear.',landscape:alaskaLandscape,horizon:'#20323e'},
-  lv:{name:'Las Vegas',description:'The neon Las Vegas Strip with fountains, the High Roller, the animated Sphere, and a slot machine jackpot raining dollar bills and gold coins.',landscape:vegasLandscape,horizon:'#1c1d33'}
+  lv:{name:'Las Vegas',description:'The Welcome to Las Vegas sign, the neon Strip, fountains, the High Roller, and the animated Sphere. A surprise slot machine bonus briefly rains dollar bills and gold coins.',landscape:vegasLandscape,horizon:'#1c1d33'}
 };
 
 const chase = [
