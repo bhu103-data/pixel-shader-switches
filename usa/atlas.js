@@ -990,18 +990,53 @@ const vegasCoats=['#e492a5','#84b4cf','#e0b87e','#9e8cd0','#74c7af','#e38868'];
 
 function vegasPerson(x,y,person,skin,bend,stride,holding,surprised=false){
   const coat=vegasCoats[person%vegasCoats.length];
+  const variant=person%8;
+  const longHair=variant===1||variant===5;
+  const skirt=variant===2||variant===6;
+  const hat=variant===3||variant===7;
+  const hair=variant%2?'#4a2f39':variant%4===0?'#25253a':'#704533';
   const headX=x+Math.round(3*bend),headY=y-10+Math.round(5*bend)-(surprised?1:0);
   rect(x-2,y,6,1,'#211d31');
   rect(x-1-stride,y-3,1,3,'#3b3448');
   rect(x+1+stride,y-3,1,3,'#3b3448');
   line(x,y-4,headX,headY+2,coat);
+  if(skirt) pixels([[x-3,y-4],[x+3,y-4],[x+4,y],[x-4,y]],coat);
+  else rect(x-2,y-4,5,4,coat);
   rect(headX-1,headY+2,3,3,coat);
   rect(headX-2,headY-1,4,4,mix(0xeef0d9,0x79493d,skin/255));
-  rect(headX-2,headY-2,4,1,'#3b3045');
-  rect(headX-2,headY-1,1,2,'#3b3045');
+  rect(headX-2,headY-2,4,1,hair);
+  rect(headX-2,headY-1,1,2,hair);
+  if(longHair){ rect(headX+1,headY-1,1,3,hair); rect(headX-3,headY,1,2,hair); }
+  if(hat){ rect(headX-3,headY-3,6,1,variant===3?'#d5a45c':'#5f79a6'); rect(headX-1,headY-4,3,1,variant===3?'#d5a45c':'#5f79a6'); }
   rect(headX+1,headY,1,1,'#3c2a37');
   if(surprised) line(headX-1,headY+3,headX-3,headY,coat);
   if(bend>.35 || holding) line(headX+1,headY+3,headX+3,bend>.35?y-1:headY+4,coat);
+}
+
+function vegasSportsCar(x,lane,style,night){
+  const palettes=[['#d84c63','#f28a78'],['#4b87bc','#7cd6df'],['#c58b42','#f4cb6d'],['#8e67bb','#d49bf0']];
+  const [body,highlight]=palettes[style%palettes.length];
+  const y=lane;
+  rect(x-13,y+5,27,2,'#202033');
+  if(style%4===0){
+    pixels([[x-13,y+4],[x-9,y],[x-3,y-3],[x+7,y-3],[x+13,y+2],[x+14,y+5]],body);
+    pixels([[x-5,y],[x-2,y-2],[x+5,y-2],[x+8,y]],night?'#35425c':'#a3c0cf');
+  }else if(style%4===1){
+    pixels([[x-14,y+5],[x-10,y-1],[x-4,y-4],[x+5,y-4],[x+12,y],[x+14,y+5]],body);
+    rect(x-4,y-2,10,2,night?'#465b73':'#a9d0d7');
+  }else if(style%4===2){
+    pixels([[x-13,y+5],[x-8,y-2],[x+2,y-3],[x+10,y],[x+14,y+4]],body);
+    rect(x-2,y-2,9,2,night?'#5b6075':'#d5d1c0');
+  }else{
+    pixels([[x-14,y+5],[x-10,y-1],[x-1,y-4],[x+8,y-2],[x+14,y+4]],body);
+    rect(x-3,y-2,9,2,night?'#4c4868':'#c4b5d7');
+  }
+  rect(x-8,y+1,16,1,highlight);
+  for(const wheel of [x-8,x+8]){
+    rect(wheel-2,y+4,4,3,'#202033');
+    rect(wheel-1,y+4,2,1,night?'#b5bfd4':'#8e8d9e');
+  }
+  rect(x+(style%2?10:-11),y+1,2,1,night?'#ffe6ac':'#f3c770');
 }
 
 function vegasCab(x,night,door){
@@ -1110,14 +1145,10 @@ function vegasMotion(time,night,displayTime,bonusTime,skyTop){
     }
   }
   vegasWheelQueue(displayTime,reacting);
-  for(const [offset,velocity,lane,color] of [[-20,21,126,'#ca8aa8'],[118,18,126,'#bbb8ce'],[290,-26,138,'#608dac']]){
+  for(const [offset,velocity,lane] of [[-20,21,126],[118,18,126],[290,-26,138]]){
     const x=((offset+velocity*time)%356+356)%356-18;
-    rect(x,lane,10,3,color);
-    rect(x+2,lane-1,5,1,'#78889e');
-    if(night){
-      rect(x+(velocity>0?9:0),lane+1,2,1,'#ffe6bb');
-      rect(x+(velocity>0?0:9),lane+1,1,1,'#eb7398');
-    }
+    const style=(Math.floor((time+Math.abs(offset)*.01)*.32)+Math.abs(offset))%4;
+    vegasSportsCar(x,lane,style,night);
   }
   vegasStreetActivity(bonusTime,night,skyTop);
 }
