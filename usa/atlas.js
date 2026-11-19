@@ -581,6 +581,33 @@ function palm(x,y,scale,night){
   });
 }
 
+function vegasHotels(night){
+  // Landmark hotels stay broad and architectural so the people remain background scale.
+  const gold=night?'#8d6b5f':'#d6a06f';
+  const goldLight=night?'#d49a73':'#f0c28a';
+  // Bellagio-style stepped hotel with a warm crown.
+  rect(79,57,29,44,night?'#37334d':'#826174');
+  rect(83,51,21,6,night?'#4a3a52':'#9e7180');
+  rect(87,46,13,5,night?'#6d4f65':'#c18b80');
+  rect(91,40,5,6,goldLight);
+  for(let y=61;y<98;y+=5) for(let x=83;x<105;x+=5){
+    rect(x,y,2,2,night?(x%10?'#f1bd7b':'#c57891'):'#b48687');
+  }
+  rect(88,92,12,9,night?'#5e4660':'#9c6b73');
+  vegasText('ARIA',112,84,night?'#f7cfa0':'#81586b');
+  // A slim gold resort tower balances the Sphere.
+  rect(116,63,17,38,night?'#423852':gold);
+  rect(119,58,11,5,night?'#64465b':goldLight);
+  rect(122,53,5,5,goldLight);
+  for(let y=68;y<97;y+=5) rect(120,y,2,2,night?'#f7c17a':'#e8bd8d');
+  for(let y=68;y<97;y+=5) rect(127,y,2,2,night?'#f7c17a':'#e8bd8d');
+  // Hotel starburst markers and rooftop beacons.
+  for(const [x,y] of [[73,69],[136,60],[235,70]]){
+    rect(x-1,y,3,1,night?'#ffe3a1':'#d9a47f');
+    rect(x,y-1,1,3,night?'#ffe3a1':'#d9a47f');
+  }
+}
+
 function vegasLandscape(){
   const night=state.night;
   pixels([...vegasRidge,[320,99],[0,99]],night?'#30314a':'#755065');
@@ -619,6 +646,11 @@ function vegasLandscape(){
   rect(0,122,320,1,night?'#7e5892':'#9f7a82');
   for(let x=0;x<320;x+=17) rect(x,133,8,1,'#957087');
   for(const [x,y,h] of [[8,118,1.25],[74,119,1],[148,120,1.3],[187,120,1.1],[244,121,1.4],[304,119,1.1]]) palm(x,y,h,night);
+  vegasHotels(night);
+  // Bellagio-style fountain basin in front of the hotel row.
+  pixels([[52,115],[92,111],[133,115],[121,120],[68,120]],night?'#263e59':'#69768a');
+  line(58,116,126,116,night?'#99e0ec':'#b4cbd2');
+  line(62,119,119,119,night?'#345b79':'#536478');
   vegasSign(night);
   line(249,104,270,65,night?'#657494':'#94778b');
   line(294,104,270,65,night?'#657494':'#94778b');
@@ -940,7 +972,13 @@ function vegasWheelQueue(time,reacting){
     const x=distance-19;
     const y=118-14*clamp((x-227)/14);
     const stride=Math.round(Math.sin(distance*.8));
+    // Fade only while off-canvas, so each rider visibly walks into the scene.
+    const entryFade=smooth(clamp((x+19)/14));
+    const exitFade=1-smooth(clamp((x-296)/18));
+    ctx.save();
+    ctx.globalAlpha=entryFade*exitFade;
     vegasPerson(x,y,rider,78+(rider*23)%85,0,stride,false,reacting && x>239);
+    ctx.restore();
   }
   rect(296,93,9,14,'#4a3c56');
   rect(295,92,11,2,'#bd93ac');
@@ -1044,6 +1082,21 @@ function vegasMotion(time,night,displayTime,bonusTime,skyTop){
       rect(x+sway,y-drop,jet%3===0?2:1,1,drop%4===0?waterColor:'#7caecc');
     }
     rect(x-1,y,3,1,'#94b9ce');
+  }
+  // Layered fountain choreography: low side arcs and a higher center plume.
+  for(const [arc,base,height] of [[-1,63,9],[1,125,10]]){
+    for(let step=0;step<=10;step++){
+      const p=step/10;
+      const x=base+arc*p*26;
+      const y=116-height*4*p*(1-p)-Math.max(0,Math.sin(time*2.7+arc))*2*p*(1-p);
+      rect(x,y,1,2,step%3===0?waterColor:'#7caecc');
+    }
+  }
+  for(let step=0;step<9;step++){
+    const p=step/8;
+    const x=96+Math.sin(time*2.7)*p*2;
+    const y=116-29*4*p*(1-p);
+    rect(x,y,2,2,step%2?waterColor:'#bdebf0');
   }
   // Neon reflections ripple across the wet Strip pavement.
   if(night){
