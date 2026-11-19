@@ -238,12 +238,25 @@ function liberty(){
   const light=state.night?'#9fd5ad':'#c1d3ac';
   const shade=state.night?'#2a625e':'#477f70';
   const stone=state.night?'#777588':'#aaa29e';
+  const stoneLight=state.night?'#a5a5b4':'#c9bbb7';
   pixels([[17,114],[22,109],[55,109],[61,114]],'#524f63');
   rect(21,108,36,3,stone);
   rect(25,104,28,4,'#746b77');
   pixels([[29,95],[49,95],[51,104],[27,104]],stone);
+  pixels([[46,96],[49,96],[51,104],[46,104]],'#676471');
+  rect(29,102,5,1,stoneLight);
+  rect(29,106,22,1,stoneLight);
+  rect(22,108,34,1,stoneLight);
+  rect(25,112,31,1,'#8a8391');
+  rect(36,97,6,7,'#686575');
   rect(37,98,4,6,'#514b60');
-  rect(26,94,26,2,'#c1afb0');
+  rect(26,94,26,2,stoneLight);
+  if(state.season===3){
+    rect(26,94,5,1,'#f0f4f3');
+    rect(49,94,3,1,'#f0f4f3');
+    rect(22,108,10,1,'#dbe8ee');
+    rect(45,108,11,1,'#dbe8ee');
+  }
   // Both boots meet the pedestal, with drapery opening between them.
   rect(32,92,7,2,shade);
   rect(42,91,7,3,copper);
@@ -251,24 +264,40 @@ function liberty(){
   pixels([[32,90],[36,76],[35,68],[40,64],[45,65],[46,73],[43,78],[45,86],[48,90],[42,89],[38,91]],copper);
   pixels([[36,68],[39,66],[46,72],[43,74],[36,72]],light);
   line(38,76,34,89,light);
-  line(42,75,40,87,'#b3c9a4');
-  line(45,79,46,88,shade);
+  line(42,75,40,87,light);
+  line(34,73,36,77,shade);
+  line(35,78,31,89,copper);
+  line(41,77,38,89,shade);
+  line(45,77,46,88,shade);
+  line(47,84,49,90,copper);
   // Her raised right arm holds the torch, the other supports the tablet.
   pixels([[35,69],[29,60],[25,48],[22,43],[23,38],[26,39],[28,47],[31,53],[39,63]],shade);
   pixels([[24,42],[26,45],[30,55],[37,64],[34,66],[29,59],[26,50]],copper);
   rect(22,34,4,7,copper);
-  rect(20,33,8,2,shade);
-  pixels([[21,33],[19,27],[22,28],[24,23],[26,27],[28,29],[26,33]],'#efb963');
-  pixels([[23,31],[23,28],[25,26],[26,30],[25,32]],'#fff0b5');
+  rect(23,36,2,4,light);
+  rect(20,32,8,2,shade);
+  rect(21,34,6,1,light);
+  pixels([[21,32],[19,27],[21,25],[22,28],[24,22],[26,26],[29,28],[27,31],[26,32]],'#da8d43');
+  pixels([[22,31],[23,27],[24,24],[25,27],[27,29],[25,32]],'#ffcd74');
+  rect(24,28,1,3,'#fff3c3');
   rect(38,58,6,7,copper);
   pixels([[36,55],[38,51],[43,51],[46,54],[45,60],[42,62],[38,60]],shade);
   pixels([[38,54],[44,54],[44,58],[42,60],[39,59]],copper);
-  rect(34,52,13,2,copper);
-  const rays=[[31,51],[33,47],[36,45],[40,43],[44,45],[47,47],[50,51]];
-  rays.forEach(([x,y],i)=>line(35+i*1.8,53,x,y,i%2===0?light:copper));
-  pixels([[43,69],[48,67],[51,77],[45,79]],'#386961');
-  line(44,70,48,68,light);
-  pixels([[48,74],[49,77],[44,79],[42,77]],copper);
+  rect(39,55,1,1,shade);
+  rect(42,55,1,1,shade);
+  rect(41,56,1,2,light);
+  rect(40,59,3,1,shade);
+  const rays=[[30,50],[32,45],[36,43],[40,41],[44,43],[48,45],[51,50]];
+  rays.forEach(([x,y],i)=>line(35+i*1.8,52,x,y,light));
+  rect(34,51,13,3,shade);
+  rect(35,51,11,1,light);
+  for(let x=36;x<46;x+=3) rect(x,52,1,1,copper);
+  pixels([[42,67],[48,64],[52,76],[45,81]],shade);
+  pixels([[44,68],[48,66],[51,76],[46,78]],copper);
+  line(44,68,48,66,light);
+  line(45,70,46,74,shade);
+  line(47,70,48,73,shade);
+  pixels([[48,75],[50,77],[46,80],[42,77]],light);
 }
 
 function bridgeTower(x,bottom){
@@ -735,11 +764,10 @@ function fallingJackpot(age,skyTop){
   }
 }
 
-function vegasBonusWarning(time){
-  const progress=1+time/bonusWarningDuration;
+function warningBadge(x,y,progress){
   const pulse=Math.sin(progress*Math.PI)**2;
   ctx.save();
-  ctx.translate(bonusX,bonusY);
+  ctx.translate(x,y);
   ctx.globalAlpha=smooth(progress/.16)*(1-smooth((progress-.84)/.16));
   pixels([[-17,-5],[-12,-10],[12,-10],[17,-5],[17,5],[12,10],[-12,10],[-17,5]],mix(0xcf7b40,0xffdc83,pulse));
   pixels([[-15,-4],[-11,-8],[11,-8],[15,-4],[15,4],[11,8],[-11,8],[-15,4]],'#322032');
@@ -1007,9 +1035,15 @@ function wrist(x,y,angle,hand){
   return [x+dx*Math.cos(angle)-dy*Math.sin(angle),y+dx*Math.sin(angle)+dy*Math.cos(angle)];
 }
 
+const nyAlarmStart=3.8,nyAlarmEnd=5.6;
+const nySpiderStart=7,nyBossStart=22;
+const bossRevealBeat=8.5;
+
 function cityWarning(time){
-  const danger=smooth((time-.35)/1.7)*(1-smooth((time-16)/6));
-  if(danger===0) return;
+  const progress=(time-nyAlarmStart)/(nyAlarmEnd-nyAlarmStart);
+  if(progress<=0 || progress>=1) return;
+  const danger=smooth(progress/.2)*(1-smooth((progress-.8)/.2));
+  warningBadge(145,30,progress);
   ctx.save();
   ctx.globalAlpha=danger*(.12+.14*Math.sin(time*2.7)**2);
   for(const [x,y,w,h] of [[91,68,17,29],[111,76,14,22],[129,64,15,31],[162,72,16,24]]){
@@ -1025,10 +1059,10 @@ function cityWarning(time){
 }
 
 const chapters=[
-  {label:'Central Park · Earth Elemental',begin:23,end:139,x:62,y:84,color:'#bd9567',draw:earthElement,ground:107,reveal:26},
-  {label:'Times Square · Fire Elemental',begin:113,end:241,x:132,y:78,color:'#f87951',draw:fireElement,ground:100,reveal:12},
-  {label:'Midtown skyline · Air Elemental',begin:215,end:343,x:193,y:72,color:'#b7cde0',draw:windElement,ground:91,reveal:18},
-  {label:'East River · Water Elemental',begin:317,end:475,x:265,y:87,color:'#5ebedb',draw:waterElement,ground:110,reveal:28}
+  {label:'Central Park · Earth Elemental',begin:nyAlarmEnd,end:10.1,cueLead:2.2,x:62,y:84,color:'#bd9567',draw:earthElement,ground:107,reveal:26},
+  {label:'Times Square · Fire Elemental',begin:10.3,end:14.4,cueLead:.75,x:132,y:78,color:'#f87951',draw:fireElement,ground:100,reveal:12},
+  {label:'Midtown skyline · Air Elemental',begin:14.6,end:18.5,cueLead:.75,x:193,y:72,color:'#b7cde0',draw:windElement,ground:91,reveal:18},
+  {label:'East River · Water Elemental',begin:18.7,end:21.9,cueLead:.75,x:265,y:87,color:'#5ebedb',draw:waterElement,ground:110,reveal:28}
 ];
 
 function earthElement(time){
@@ -1075,8 +1109,8 @@ function waterElement(time){
   for(let i=0;i<10;i++) rect(-27+i*6,10+Math.sin(time*4+i)*5,2,1,'#e3fbf5');
 }
 
-function elementCue(chapter,time,front){
-  const emerging=smooth((front-chapter.begin+18)/35)*(1-smooth((front-chapter.end+27)/27));
+function elementCue(chapter,time){
+  const emerging=smooth((time-chapter.begin+chapter.cueLead)/chapter.cueLead)*(1-smooth((time-chapter.begin)/.9));
   if(emerging<=0) return;
   ctx.save();
   ctx.globalAlpha=emerging*.65;
@@ -1108,12 +1142,11 @@ function elementCue(chapter,time,front){
   ctx.restore();
 }
 
-function elementScenes(time,front){
+function elementScenes(time){
   let active=null;
-  let strength=0;
   for(const chapter of chapters){
-    elementCue(chapter,time,front);
-    const weight=smooth((front-chapter.begin)/24)*(1-smooth((front-chapter.end+28)/28));
+    elementCue(chapter,time);
+    const weight=smooth((time-chapter.begin)/.9)*smooth((chapter.end-time)/.85);
     if(weight<=0) continue;
     ctx.save();
     ctx.globalAlpha=weight*.18;
@@ -1127,13 +1160,13 @@ function elementScenes(time,front){
       chapter.draw(time);
     });
     ctx.restore();
-    if(weight>strength){active=chapter;strength=weight}
+    active=chapter;
   }
   return active;
 }
 
 function mysterio(time){
-  const reveal=smooth((time-8.5)/3);
+  const reveal=smooth((time-bossRevealBeat)/3);
   const retreat=smooth((time-16.1)/5);
   const presence=reveal*(1-retreat);
   if(presence===0) return null;
@@ -1234,13 +1267,28 @@ function interaction(time) {
 }
 
 function trainPosition(time){
-  return -258+time*24.3;
+  return -258+time*13.9;
+}
+
+function nyActionTime(time){
+  if(time<nySpiderStart) return -1;
+  if(time<nyBossStart){
+    const progress=(time-nySpiderStart)/(nyBossStart-nySpiderStart);
+    return bossRevealBeat*(progress+.9*progress*(1-progress)**2);
+  }
+  const after=time-nyBossStart;
+  const initialSpeed=bossRevealBeat/(nyBossStart-nySpiderStart);
+  // Bring the chase up to full speed during the boss's reveal without jumping a frame.
+  const ramp=Math.min(1,after);
+  return bossRevealBeat+initialSpeed*ramp+(1-initialSpeed)*ramp*ramp/2+(after-ramp);
 }
 
 function warningLabel(time,chapter){
+  if(time>=nyAlarmStart && time<nyAlarmEnd) return 'Danger · Unusual activity near Central Park';
+  if(time>=8.35 && time<9.55) return 'Spider-Man · Incoming';
   if(chapter) return chapter.label;
-  if(time>=.8 && time<3) return 'No. 7 train · Unusual signal ahead';
-  if(time>=18 && time<21) return 'Mysterio · Projection fading';
+  if(time>nyBossStart && time<30) return 'Mysterio · Final encounter';
+  if(time>=30 && time<34.8) return 'Mysterio · Projection fading';
   return '';
 }
 
@@ -1251,9 +1299,9 @@ const fullscreen=$('#fullscreen');
 const cycle=$('#cycle');
 const season=$('#season');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-let paused=reduced.matches, automatic=true, frame=0, elapsed=0, last=null, vegasDisplayStart=0;
+let paused=reduced.matches, automatic=true, frame=0, elapsed=0, last=null, vegasDisplayStart=0, nyStoryStart=0;
 let skyPhase=0;
-const dayDuration=12;
+const dayDuration=48;
 const layers=[canvas,nightCanvas].map(target=>{
   const skyBuffer=document.createElement('canvas');
   const terrain=document.createElement('canvas');
@@ -1261,7 +1309,29 @@ const layers=[canvas,nightCanvas].map(target=>{
   return {canvas:target,target:target.getContext('2d',{alpha:false}),skyBuffer,terrain};
 });
 const snowRandom=rng(204);
-const flakes=Array.from({length:88},()=>[snowRandom()*320,snowRandom()*144,7+snowRandom()*14,snowRandom()*6.28]);
+const flakes=Array.from({length:166},(_,index)=>({
+  x:snowRandom()*332-6,y:snowRandom(),phase:snowRandom()*Math.PI*2,
+  size:index<112?1:index%4===0?3:2,speed:snowRandom()*9
+}));
+
+function snowfall(layer,foreground){
+  const top=-layer.offset/2-4;
+  const span=layer.canvas.height/2+8;
+  // The gust changes lateral drift while gravity keeps each flake moving down.
+  const gust=12*Math.sin(elapsed*.84)+6*Math.sin(elapsed*1.68);
+  for(const {x,y,phase,size,speed} of flakes){
+    if((size>1)!==foreground) continue;
+    const drift=(4+size*2)*elapsed+gust*size+Math.sin(elapsed*1.5+phase)*size*2;
+    const left=((x+drift)%332+332)%332-6;
+    const row=top+(y*span+elapsed*(7+size*4+speed))%span;
+    if(size===1) rect(left,row,1,1,'#bacbdce0');
+    else if(size===2) rect(left,row,2,2,'#e2edf5ec');
+    else{
+      rect(left+1,row,1,3,'#f6fbfff2');
+      rect(left,row+1,3,1,'#f6fbfff2');
+    }
+  }
+}
 
 function prepare(){
   // Extend the sky and foreground on tall screens so both ends of the panorama stay visible.
@@ -1292,6 +1362,7 @@ function draw(){
   const vegasTime=elapsed-vegasDisplayStart;
   const bonusTime=(vegasTime-bonusStart+bonusWarningDuration)%bonusInterval-bonusWarningDuration;
   const vegasWarning=state.region==='lv' && bonusTime>=-bonusWarningDuration && bonusTime<0;
+  const snow=state.season===3 && state.region!=='lv';
   let chapter=null;
   for(const [index,layer] of layers.entries()){
     ctx=layer.target;
@@ -1304,10 +1375,11 @@ function draw(){
     ctx.setTransform(1,0,0,1,0,0);
     ctx.drawImage(layer.terrain,0,0);
     ctx.setTransform(2,0,0,2,0,layer.offset);
+    if(snow) snowfall(layer,false);
     if(state.region==='ny'){
       const trainX=trainPosition(time);
       cityWarning(time);
-      chapter=elementScenes(time,trainX+251);
+      chapter=elementScenes(time);
       smallFish(time,index===1);
       transformed(0,39,1,()=>{
         train(trainX,index===1);
@@ -1315,21 +1387,16 @@ function draw(){
         rect(trainX+240,68,3,1,'#fff');
         line(trainX+242,69,trainX+240,72,'#fff');
       });
-      interaction(time);
+      interaction(nyActionTime(time));
     }else if(state.region==='ak'){
       alaskaMotion(time,index===1);
       smallFish(time,index===1);
     }else{
       vegasMotion(time,index===1,vegasTime);
-      if(vegasWarning) vegasBonusWarning(bonusTime);
+      if(vegasWarning) warningBadge(bonusX,bonusY,1+bonusTime/bonusWarningDuration);
       vegasBonus(bonusTime,-layer.offset/2);
     }
-    if(state.season===3 && state.region!=='lv'){
-      for(const [x,y,speed,phase] of flakes) {
-        const size=speed>18?2:1;
-        rect((x+Math.sin(elapsed*.8+phase)*3+320)%320,(y+elapsed*speed)%144,size,size,size===2?'#e6f3f9':'#acbdcf');
-      }
-    }
+    if(snow) snowfall(layer,true);
   }
   const notice=state.region==='ny'?warningLabel(time,chapter):vegasWarning?'Warning · Unusual activity on the Strip':'';
   if(alert.textContent!==notice) alert.textContent=notice;
@@ -1366,12 +1433,15 @@ $('nav').addEventListener('click',event=>{
   if(!Object.hasOwn(regions,place) || state.region===place) return;
   state.region=place;
   if(place==='lv') vegasDisplayStart=elapsed;
+  if(place==='ny') nyStoryStart=elapsed;
   render();
 });
 const light=$('#light');
 function storyTime(){
-  const turn=elapsed%48;
-  return turn<=24 ? turn : 48-turn;
+  const length=state.region==='ny'?38:24;
+  const start=state.region==='ny'?nyStoryStart:0;
+  const turn=(elapsed-start)%(length*2);
+  return turn<=length ? turn : length*2-turn;
 }
 function setAutomatic(enabled){
   automatic=enabled;
