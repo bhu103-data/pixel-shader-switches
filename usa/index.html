@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Explore New York, Alaska, and Las Vegas in Pixel Atlas. Continue as a guest without an account.">
+<meta name="description" content="Explore New York, Alaska, and Las Vegas in Pixel Atlas. Try the email sign-in demo or continue as a guest.">
 <title>Enter Pixel Atlas</title>
 <link rel="stylesheet" href="./entry.css">
 <script type="module" src="./auth.js"></script>
@@ -24,6 +24,13 @@
   <header>
    <h2>Enter Pixel Atlas</h2>
   </header>
+  <form id="demo-sign-in" action="./scene.html" autocomplete="off" aria-labelledby="demo-heading">
+   <h3 id="demo-heading">Sign in with email</h3>
+   <p id="demo-note">Demo only. Use a sample address. No email is sent and no account is created.</p>
+   <label for="demo-email">Email address</label>
+   <input id="demo-email" type="email" placeholder="name@example.com" aria-describedby="demo-note" required>
+   <button class="primary" type="submit">Try demo sign-in</button>
+  </form>
   <section id="auth" aria-label="Account" hidden>
    <div class="choices" role="group" aria-label="Sign-in or registration">
     <button type="button" data-mode="login" aria-pressed="true">Sign in</button>

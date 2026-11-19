@@ -29,6 +29,7 @@ function setBusy(active){
 }
 function showSession(session){
   const signedIn=Boolean(session);
+  $('demo-sign-in').hidden=true;
   $('signed-in').hidden=!signedIn;
   auth.hidden=signedIn;
   $('guest').hidden=signedIn;

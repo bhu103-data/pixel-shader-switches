@@ -11,7 +11,7 @@ The site has no build step. From the repository root, run `python3 -m http.serve
 
 ### Email and SMS verification
 
-Supabase Auth powers the optional accounts. Guest access works without Supabase.
+Without Supabase, the email sign-in demo checks the format of a sample address and opens the atlas. The form does not transmit the address or create an account. Guest access also works without Supabase.
 
 1. Add your Supabase project URL and browser-safe publishable key (`sb_publishable_...`) to `usa/auth-config.js`. Keep private keys in your authentication service.
 2. Enable the Email and Phone providers in Supabase Auth. Use `{{ .Token }}` in the email template to deliver a verification code. Set up an SMS provider for phone verification. Configure the production site URL and email sender, then test delivery.
