@@ -551,7 +551,7 @@ const vegasGlyphs={
   V:['101','101','101','101','010'],E:['111','100','110','100','111'],G:['111','100','101','101','111'],
   J:['001','001','001','101','111'],C:['111','100','100','100','111'],K:['101','101','110','101','101'],
   P:['110','101','110','100','100'],O:['111','101','101','101','111'],T:['111','010','010','010','010'],
-  B:['110','101','110','101','110'],N:['101','111','111','111','101'],U:['101','101','101','101','111'],Y:['101','101','010','010','010'],I:['111','010','010','010','111']
+  B:['110','101','110','101','110'],N:['101','111','111','111','101'],U:['101','101','101','101','111'],Y:['101','101','010','010','010'],I:['111','010','010','010','111'],M:['10001','11011','10101','10101','10101']
 };
 function vegasText(text,x,y,color){
   for(const [index,letter] of [...text].entries()){
@@ -581,6 +581,13 @@ function palm(x,y,scale,night){
   });
 }
 
+function hotelWindows(x,y,w,h,cols,rows,lit,dim){
+  for(let row=0;row<rows;row++) for(let col=0;col<cols;col++){
+    const wx=x+3+col*((w-6)/cols), wy=y+4+row*((h-8)/rows);
+    rect(wx,wy,2,2,(col+row)%4===0?dim:lit);
+  }
+}
+
 function vegasHotels(night){
   // Landmark hotels stay broad and architectural so the people remain background scale.
   const gold=night?'#8d6b5f':'#d6a06f';
@@ -593,7 +600,9 @@ function vegasHotels(night){
   for(let x=9;x<66;x+=7) rect(x,55,2,44,night?'#8f6b79':'#b7868a');
   for(let y=59;y<96;y+=6) rect(12,y,55,1,night?'#6e536b':'#9f7682');
   pixels([[8,101],[66,101],[60,96],[15,96]],night?'#282a42':'#70596b');
-  vegasText('BELLAGIO',15,91,night?'#f4ca93':'#e7b37f');
+  rect(13,87,49,7,night?'#5a3b59':'#9e6875');
+  hotelWindows(15,57,45,28,7,4,night?'#ffd37f':'#b8898b',night?'#b86585':'#9d727d');
+  vegasText('BELLAGIO',16,88,night?'#fff0ad':'#f0c187');
   // A grand pyramid resort anchors the opposite side of the skyline.
   pixels([[136,101],[177,101],[157,57]],night?'#473955':'#a27672');
   pixels([[142,98],[171,98],[157,64]],night?'#59607b':'#c5a07e');
@@ -626,6 +635,18 @@ function vegasHotels(night){
     rect(x-1,y,3,1,night?'#ffe3a1':'#d9a47f');
     rect(x,y-1,1,3,night?'#ffe3a1':'#d9a47f');
   }
+  // Professional hotel detailing: facade bands, lit entrances and marquee canopies.
+  rect(8,98,61,3,night?'#b26e72':'#b07d7f');
+  rect(23,96,31,3,night?'#e0a36f':'#d79b7d');
+  for(const x of [26,34,42,50]) rect(x,99,3,2,night?'#ffe5a5':'#b87c72');
+  rect(109,96,22,5,night?'#5b4561':'#80606c');
+  hotelWindows(118,64,14,30,2,5,night?'#f4bf77':'#bd8d86',night?'#986879':'#a17881');
+  rect(180,96,25,5,night?'#273550':'#577184');
+  hotelWindows(184,49,16,43,3,7,night?'#8ed9e4':'#9db7ba',night?'#52708a':'#72929a');
+  rect(224,61,28,40,night?'#443851':'#967174');
+  rect(228,57,20,4,night?'#65465e':'#bd8c7f');
+  hotelWindows(226,65,24,30,4,5,night?'#f5c678':'#b98783',night?'#a76578':'#97717b');
+  rect(231,92,14,9,night?'#62415c':'#a56e72');
 }
 
 function vegasLandscape(){
