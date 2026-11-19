@@ -366,6 +366,20 @@ function nyLandscape(){
   rect(0,127,320,1,'#727f90');
   for(let x=0;x<320;x+=12) line(x,129,x+7,135,'#596378');
   for(const x of [37,117,204,289]) rect(x,136,5,8,'#303c50');
+  // Street furniture anchors the foreground and makes the avenue read at a glance.
+  for(const x of [18,103,246]){
+    rect(x,116,1,20,'#3b3c51');
+    rect(x-2,115,5,1,'#3b3c51');
+    rect(x-1,113,3,2,state.night?'#ffe2a0':'#c9a28f');
+    if(state.night) rect(x-2,114,5,1,'#e9b66f');
+  }
+  // A tiny yellow cab passes under the elevated line.
+  const cabX=((elapsed*18)%370)-38;
+  rect(cabX,122,22,5,state.night?'#b17b3e':'#e0a74b');
+  pixels([[cabX+4,122],[cabX+8,119],[cabX+16,119],[cabX+19,122]],state.night?'#a1764a':'#f0c569');
+  rect(cabX+9,120,6,2,state.night?'#566077':'#6b7180');
+  rect(cabX+1,127,4,2,'#242536'); rect(cabX+16,127,4,2,'#242536');
+  rect(cabX+10,118,3,1,'#fff0b0');
 }
 
 function alaskaLandscape(){
@@ -389,6 +403,30 @@ function alaskaLandscape(){
   rect(278,102,21,11,'#75524d');
   pixels([[275,102],[288,93],[303,102]],state.season===3?'#e1eaf2':'#5d4853');
   rect(283,105,4,4,state.night?'#ffd181':'#aab4ba');
+  // Cabin details, smoke and a small fishing boat give the fjord a lived-in scale.
+  rect(279,101,19,2,'#493e4d');
+  rect(296,96,2,7,'#4d414c');
+  for(let puff=0;puff<4;puff++){
+    const drift=Math.sin(elapsed*.3+puff)*2+puff*1.8;
+    const rise=(elapsed*.8+puff*3)%12;
+    ctx.save();
+    ctx.globalAlpha=(.25-puff*.035)*(state.night?.82:1);
+    rect(296+drift-rise*.16,94-rise,3+puff%2,2,'#d7dce1');
+    ctx.restore();
+  }
+  rect(281,111,15,1,'#3b3545');
+  rect(283,112,11,2,'#2a2d3b');
+  rect(286,109,2,2,state.night?'#ffd98f':'#d18d72');
+  rect(291,109,2,2,state.night?'#ffd98f':'#d18d72');
+  line(281,113,276,118,'#5c5361');
+  line(296,113,300,118,'#5c5361');
+  // A distant skiff rocks gently in front of the glacier.
+  const boatX=176+Math.sin(elapsed*.42)*3;
+  const boatY=119+Math.sin(elapsed*.42)*.5;
+  pixels([[boatX-9,boatY],[boatX+10,boatY],[boatX+6,boatY+3],[boatX-5,boatY+3]],night?'#263b54':'#5f5360');
+  line(boatX,boatY,boatX,boatY-9,'#4c5364');
+  pixels([[boatX+1,boatY-8],[boatX+8,boatY-4],[boatX+1,boatY-3]],night?'#b5d6e0':'#d5d9d4');
+  rect(boatX-4,boatY-1,2,1,night?'#f5d18b':'#bd8b75');
 }
 
 const smallFishJumps={
@@ -865,6 +903,17 @@ function vegasWheel(time,night,reacting){
   for(let step=0;step<7;step++) rect(227+step*2,117-step*2,4,2,'#a98ca0');
   for(const x of [242,258,274,290,300]) rect(x,98,1,6,'#856b86');
   rect(242,98,59,1,'#ae91ac');
+  // Elevated loading platform with ticket kiosk, lamps and a readable queue gate.
+  rect(220,117,83,2,night?'#4d5374':'#8c7184');
+  for(const x of [224,238,252,266,280,294]){
+    rect(x,117,1,7,night?'#64739a':'#a28a9a');
+    rect(x-1,123,3,1,night?'#7788a6':'#b39aa6');
+  }
+  rect(215,110,8,8,night?'#27304d':'#73556e');
+  rect(216,111,6,2,night?'#9de2e2':'#f2c47e');
+  vegasText('HR',216,114,night?'#e7c5f5':'#f8ddb1');
+  rect(304,114,5,2,night?'#ffd28a':'#cf9b82');
+  rect(306,116,1,5,night?'#7e7191':'#8d6d7b');
 }
 
 function vegasWheelQueue(time,reacting){
