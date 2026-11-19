@@ -20,8 +20,8 @@
   /* 16:9 Stage */
   #stage {
     position: relative;
-    width: min(100vw, calc(100vh * 16 / 9));
-    height: min(100vh, calc(100vw * 9 / 16));
+    width: min(100vw, calc(100dvh * 16 / 9));
+    height: min(100dvh, calc(100vw * 9 / 16));
     background: var(--stage-bg);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
@@ -38,6 +38,10 @@
     opacity: 0.35; transition: opacity 0.25s ease;
   }
   #navBar:hover { opacity: 1; }
+  @media (hover: none) {
+    #navBar { opacity: 0.82; max-width: 94vw; overflow-x: auto; }
+    .nav-pill { padding: 7px 12px; font-size: 13px; }
+  }
   #navBar.hidden { display: none; }
   .usa-link {
     position: absolute; z-index: 39; right: 12px; bottom: 12px;
@@ -114,17 +118,17 @@
   /* Scene 3: Light & Dark Switch (440x280 container) */
   #lightDarkWrap {
     position: relative;
-    width: 440px; height: 280px;
-    max-width: 95%;
+    width: min(440px, 92%);
+    aspect-ratio: 440 / 280;
     display: flex; align-items: center; justify-content: center;
   }
   #ldCanvas {
-    width: 440px; height: 280px; display: block;
+    width: 100%; height: 100%; display: block;
   }
   #ldBtn {
     position: absolute;
-    left: 60px; top: 58px; width: 320px; height: 164px;
-    border-radius: 58px; border: none; background: transparent;
+    left: 13.64%; top: 20.71%; width: 72.73%; height: 58.57%;
+    border-radius: 999px; border: none; background: transparent;
     cursor: pointer; z-index: 10; outline: none;
     touch-action: none;
   }
@@ -196,6 +200,20 @@
   function smoothstep(e0, e1, x) {
     const t = clamp((x - e0) / (e1 - e0), 0, 1);
     return t * t * (3 - 2 * t);
+  }
+  function roundRectPath(ctx, x, y, width, height, radius) {
+    const r = Math.min(radius, width * 0.5, height * 0.5);
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(x, y, width, height, r);
+      return;
+    }
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + width, y, x + width, y + height, r);
+    ctx.arcTo(x + width, y + height, x, y + height, r);
+    ctx.arcTo(x, y + height, x, y, r);
+    ctx.arcTo(x, y, x + width, y, r);
+    ctx.closePath();
   }
 
   // =========================================================================
@@ -557,12 +575,20 @@
   }
 
   // Light Field 2-pass radius-1 + 2-pass radius-3 * 0.55 box blur
+  const lightScratchCache = new Map();
   function buildLightField(srcGrid, cols, rows, dstRgba) {
     const len = cols * rows * 3;
-    const tempA = new Float32Array(len);
-    const tempB = new Float32Array(len);
-    const blur1 = new Float32Array(srcGrid);
-    const blur3 = new Float32Array(srcGrid);
+    let scratch = lightScratchCache.get(len);
+    if (!scratch) {
+      scratch = {
+        tempA: new Float32Array(len), tempB: new Float32Array(len),
+        blur1: new Float32Array(len), blur3: new Float32Array(len)
+      };
+      lightScratchCache.set(len, scratch);
+    }
+    const { tempA, tempB, blur1, blur3 } = scratch;
+    blur1.set(srcGrid);
+    blur3.set(srcGrid);
 
     function boxPass(input, output, rad) {
       // Horizontal
@@ -647,6 +673,8 @@
     const FULL_H = CORE_H + PAD * 2;
     const idxBuf = new Uint8Array(FULL_W * FULL_H);
     const rgbaBuf = new Uint8Array(FULL_W * FULL_H * 4);
+    // Reuse the fallback bitmap surface instead of allocating a canvas/ImageData
+    // on every animation frame when WebGL is unavailable.
     const fallbackBitmap = document.createElement('canvas');
     fallbackBitmap.width = FULL_W; fallbackBitmap.height = FULL_H;
     const fallbackBitmapCtx = fallbackBitmap.getContext('2d');
@@ -1634,6 +1662,7 @@
         e.preventDefault();
         targetX = clamp(targetX + 0.04, 0, 1);
         goingBack = false;
+        btn.setAttribute('aria-checked', targetX >= 0.5 ? 'true' : 'false');
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         if (x >= 0.98 && !goingBack) {
@@ -1641,6 +1670,7 @@
           leaveFocusClock = getClock();
         }
         targetX = clamp(targetX - 0.04, 0, 1);
+        btn.setAttribute('aria-checked', targetX >= 0.5 ? 'true' : 'false');
       } else if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         targetX = targetX < 0.5 ? 1 : 0;
@@ -1741,8 +1771,7 @@
         const ctx = fbCanvas.getContext('2d');
         ctx.clearRect(0, 0, cw, ch);
         ctx.save();
-        ctx.beginPath();
-        ctx.roundRect((cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
+        roundRectPath(ctx, (cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
         ctx.clip();
         fallbackImageData.data.set(rgbaBuf);
         fallbackBitmapCtx.putImageData(fallbackImageData, 0, 0);
@@ -1852,6 +1881,8 @@
     const fullH = CORE_H + PAD * 2;
     let idxBuf = new Uint8Array(fullW * fullH);
     let rgbaBuf = new Uint8Array(fullW * fullH * 4);
+    // Cached fallback surface; this avoids repeated canvas and ImageData
+    // allocations in the 2D rendering path.
     const fallbackBitmap = document.createElement('canvas');
     fallbackBitmap.width = fullW; fallbackBitmap.height = fullH;
     const fallbackBitmapCtx = fallbackBitmap.getContext('2d');
@@ -2940,8 +2971,7 @@
         const ctx = fbCanvas.getContext('2d');
         ctx.clearRect(0, 0, cw, ch);
         ctx.save();
-        ctx.beginPath();
-        ctx.roundRect((cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
+        roundRectPath(ctx, (cw - capW)*0.5, (ch - capH)*0.5, capW, capH, capH * 0.5);
         ctx.clip();
         if (fallbackBitmap.width !== fullW || fallbackBitmap.height !== fullH) {
           fallbackBitmap.width = fullW; fallbackBitmap.height = fullH;
@@ -3209,8 +3239,9 @@
     btn.addEventListener('pointermove', (e) => {
       if (!dragging) return;
       const dx = (e.clientX - pointerStartX) / 156;
+      const previousT = t;
       t = clamp(dragStartT + dx, 0, 1);
-      v = dx * 10;
+      v = (t - previousT) * 60;
     });
 
     btn.addEventListener('pointerup', (e) => {
@@ -3278,15 +3309,13 @@
       ctx.shadowBlur = 26;
       ctx.shadowOffsetY = 10;
       ctx.fillStyle = sampleRamp(STOPS.track, t);
-      ctx.beginPath();
-      ctx.roundRect(tx, ty, tw, th, tr);
+      roundRectPath(ctx, tx, ty, tw, th, tr);
       ctx.fill();
       ctx.restore();
 
       // 2. Track Recessed Inner Shadow & Rim Light Bounce on Track Floor
       ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(tx, ty, tw, th, tr);
+      roundRectPath(ctx, tx, ty, tw, th, tr);
       ctx.clip();
 
       // Rim light reflection on track floor (bottom-left at night -> top-right at day)
@@ -3304,16 +3333,14 @@
       ctx.shadowColor = `rgba(0, 0, 0, ${lerp(0.85, 0.22, t).toFixed(2)})`;
       ctx.shadowBlur = 12;
       ctx.shadowOffsetY = 3;
-      ctx.beginPath();
-      ctx.roundRect(tx - 3, ty - 3, tw + 6, th + 6, tr + 2);
+      roundRectPath(ctx, tx - 3, ty - 3, tw + 6, th + 6, tr + 2);
       ctx.stroke();
       ctx.restore();
 
       // Track 1px crisp highlight edge
       ctx.strokeStyle = `rgba(255, 255, 255, ${lerp(0.06, 0.55, t).toFixed(2)})`;
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(tx + 0.5, ty + 0.5, tw - 1, th - 1, tr);
+      roundRectPath(ctx, tx + 0.5, ty + 0.5, tw - 1, th - 1, tr);
       ctx.stroke();
 
       // 3. Frosted Glass Knob
@@ -3325,15 +3352,13 @@
       knobGrad.addColorStop(0, sampleRamp(STOPS.knobTop, t));
       knobGrad.addColorStop(1, sampleRamp(STOPS.knobBot, t));
       ctx.fillStyle = knobGrad;
-      ctx.beginPath();
-      ctx.roundRect(kx, ky, knobSize, knobSize, knobR);
+      roundRectPath(ctx, kx, ky, knobSize, knobSize, knobR);
       ctx.fill();
       ctx.restore();
 
       // Knob interior tinted rim glow + upper white sheen
       ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(kx, ky, knobSize, knobSize, knobR);
+      roundRectPath(ctx, kx, ky, knobSize, knobSize, knobR);
       ctx.clip();
 
       const innerGlowX = lerp(kx + 22, kx + knobSize - 22, t);
@@ -3354,8 +3379,7 @@
       // Knob 1px specular border
       ctx.strokeStyle = `rgba(255, 255, 255, ${lerp(0.14, 0.90, t).toFixed(2)})`;
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(kx + 0.5, ky + 0.5, knobSize - 1, knobSize - 1, knobR);
+      roundRectPath(ctx, kx + 0.5, ky + 0.5, knobSize - 1, knobSize - 1, knobR);
       ctx.stroke();
 
       // 4. Traveling Gaussian Edge Rim Light (u0 = 0.60 + 0.53 * ease(t))
