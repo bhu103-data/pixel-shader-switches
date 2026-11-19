@@ -844,13 +844,15 @@ function vegasWheel(time,night,reacting){
     rect(x,y,1,3,'#a89fbd');
     rect(x-4,y+2,9,5,night?'#303a59':'#6d5976');
     rect(x-3,y+3,7,3,night?'#f3d6a2':'#efccbd');
-    rect(x-2,y+3,1,1,'#503f54');
-    rect(x+1,y+3,1,1,'#553f50');
-    rect(x-2,y+4,1,2,'#79658f');
-    rect(x+1,y+4,1,2,'#89516b');
+    rect(x-3,y+3,2,2,'#da9d7e');
+    rect(x+1,y+3,2,2,'#b97862');
+    rect(x-2,y+4,1,1,'#503f54');
+    rect(x+2,y+4,1,1,'#553f50');
+    rect(x-3,y+5,2,1,'#79658f');
+    rect(x+1,y+5,2,1,'#89516b');
     if(reacting){
-      rect(x-3,y+3,1,1,'#79658f');
-      rect(x+2,y+3,1,1,'#89516b');
+      rect(x-4,y+3,1,2,'#79658f');
+      rect(x+3,y+3,1,2,'#89516b');
       if(i%4===0) rect(x+5,y+1,1,2,'#ffeeb3');
     }
     rect(x-3,y+7,7,1,night?'#cfa9dc':'#a590ad');
@@ -860,12 +862,24 @@ function vegasWheel(time,night,reacting){
   rect(242,104,58,1,night?'#ffe0ab':'#bd9a9e');
   rect(242,109,2,9,'#634f68');
   rect(298,109,2,9,'#634f68');
-  for(let step=0;step<4;step++) rect(301+step*2,105+step*2,4,1,'#a98ca0');
+  for(let step=0;step<7;step++) rect(227+step*2,117-step*2,4,2,'#a98ca0');
   for(const x of [242,258,274,290,300]) rect(x,98,1,6,'#856b86');
   rect(242,98,59,1,'#ae91ac');
-  for(const [index,x] of [247,253,261,282,288,294].entries()){
-    vegasPerson(x,104,index,[124,78,145,91,155,102][index],0,0,false,reacting);
+}
+
+function vegasWheelQueue(time,reacting){
+  const pace=time*11;
+  for(let rider=0;rider<17;rider++){
+    const distance=(pace+rider*19)%323;
+    // Everyone enters from the left, climbs the same stair and exits behind the gate.
+    const x=distance-19;
+    const y=118-14*clamp((x-227)/14);
+    const stride=Math.round(Math.sin(distance*.8));
+    vegasPerson(x,y,rider,78+(rider*23)%85,0,stride,false,reacting && x>239);
   }
+  rect(296,93,9,14,'#4a3c56');
+  rect(295,92,11,2,'#bd93ac');
+  rect(297,95,5,4,'#785f79');
 }
 
 const vegasCabStops=[252,155,64];
@@ -879,9 +893,12 @@ function vegasPerson(x,y,person,skin,bend,stride,holding,surprised=false){
   rect(x+1+stride,y-3,1,3,'#3b3448');
   line(x,y-4,headX,headY+2,coat);
   rect(headX-1,headY+2,3,3,coat);
-  rect(headX-1,headY,3,2,mix(0xeef0d9,0x79493d,skin/255));
+  rect(headX-2,headY-1,4,4,mix(0xeef0d9,0x79493d,skin/255));
+  rect(headX-2,headY-2,4,1,'#3b3045');
+  rect(headX-2,headY-1,1,2,'#3b3045');
+  rect(headX+1,headY,1,1,'#3c2a37');
   if(surprised) line(headX-1,headY+3,headX-3,headY,coat);
-  if(bend>.35 || holding) line(headX+1,headY+3,headX+3,bend>.35?y-1:headY+4,holding?'#c1e4a8':coat);
+  if(bend>.35 || holding) line(headX+1,headY+3,headX+3,bend>.35?y-1:headY+4,coat);
 }
 
 function vegasCab(x,night,door){
@@ -902,32 +919,41 @@ function vegasCab(x,night,door){
   rect(x-11,y+1,2,1,'#e5788c');
 }
 
-function vegasStreetActivity(time,night){
+function vegasStreetActivity(time,night,skyTop){
   if(time<0 || time>=vegasStreetEnd) return;
   for(const [group,stop] of vegasCabStops.entries()){
     const leave=vegasCabLeaveAt+group*.45;
     for(let person=0;person<3;person++){
-      const entry=.18+group*.24+person*.24;
-      const pickup=vegasPickupAt+group*.21+person*.24;
-      const board=vegasBoardAt+group*.40+person*.31;
+      const order=2-person;
+      const entry=.18+group*.24+order*.24;
+      const pickup=vegasPickupAt+group*.21+order*.24;
+      const board=vegasBoardAt+group*.40+order*.48;
       if(time<entry || time>=board+.28) continue;
-      const spot=stop+(person-1)*15+group%2*2;
+      const spot=stop-42+person*14;
       const curb=122+person%2;
       const walk=smooth((time-entry)/3.9);
       const taxiWalk=smooth((time-pickup-1.05)/(board-pickup-1.05));
       const stepIn=smooth((time-board+.25)/.50);
       const bend=smooth((time-pickup)/.34)*smooth((pickup+1.05-time)/.36);
       const holding=time>=pickup+.5;
-      const streetX=spot+(group%2?18:-19)*(1-walk);
+      const streetX=spot-21*(1-walk);
       const x=lerp(streetX,stop-4,taxiWalk);
       const stride=walk<1 || (taxiWalk>0 && taxiWalk<1)?Math.round(Math.sin(time*15+person)*1.1):0;
-      if(time>=pickup-1.05 && !holding){
-        rect(spot+3,curb-1,4,1,person%2?'#b9e68f':'#fadb77');
-        rect(spot+5,curb-2,1,1,person%2?'#cdebc1':'#fff0af');
-      }
       ctx.save();
-      ctx.globalAlpha=smooth((time-entry)/.3)*(1-smooth((time-board)/.28));
-      vegasPerson(x,curb+stepIn*8,group*3+person,83+group*19+person*21,bend,stride,holding);
+      const fade=1-smooth((time-board)/.28);
+      const feet=curb+stepIn*8;
+      ctx.globalAlpha=smooth((time-entry)/.3)*fade;
+      vegasPerson(x,feet,group*3+person,83+group*19+person*21,bend,stride,holding);
+      const fall=clamp((time-pickup+2.8)/2.35);
+      if(fall>0){
+        const lift=smooth((time-pickup-.35)/.55);
+        const sway=Math.sin(fall*Math.PI*3)*(1-fall)*7;
+        const cashX=lerp(spot+5+sway,x+5+Math.round(3*bend),lift);
+        const cashY=lerp(lerp(skyTop-6,curb-2,fall),feet-5+Math.round(4*bend),lift);
+        ctx.globalAlpha=fade;
+        rect(cashX,cashY,person%2?4:2,2,person%2?'#a5d88f':'#fadb77');
+        rect(cashX,cashY,1,1,person%2?'#d8efc4':'#fff0af');
+      }
       ctx.restore();
     }
     const arrive=smooth((time-.75-group*.6)/(7.1-group*.18));
@@ -937,9 +963,10 @@ function vegasStreetActivity(time,night){
   }
 }
 
-function vegasMotion(time,night,displayTime,bonusTime){
+function vegasMotion(time,night,displayTime,bonusTime,skyTop){
   vegasSphere(displayTime,night);
-  vegasWheel(displayTime,night,bonusTime>=jackpotAt && bonusTime<10.8);
+  const reacting=bonusTime>=jackpotAt && bonusTime<10.8;
+  vegasWheel(displayTime,night,reacting);
 
   const waterColor=night?'#c6f5fd':'#efd9df';
   for(let jet=0;jet<15;jet++){
@@ -953,6 +980,7 @@ function vegasMotion(time,night,displayTime,bonusTime){
     }
     rect(x-1,y,3,1,'#94b9ce');
   }
+  vegasWheelQueue(displayTime,reacting);
   for(const [offset,velocity,lane,color] of [[-20,21,126,'#ca8aa8'],[118,18,126,'#bbb8ce'],[290,-26,138,'#608dac']]){
     const x=((offset+velocity*time)%356+356)%356-18;
     rect(x,lane,10,3,color);
@@ -962,7 +990,7 @@ function vegasMotion(time,night,displayTime,bonusTime){
       rect(x+(velocity>0?0:9),lane+1,1,1,'#eb7398');
     }
   }
-  vegasStreetActivity(bonusTime,night);
+  vegasStreetActivity(bonusTime,night,skyTop);
 }
 
 const regions={
@@ -1531,7 +1559,7 @@ const cycle=$('#cycle');
 const season=$('#season');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let paused=reduced.matches, automatic=true, frame=0, elapsed=0, last=null, vegasDisplayStart=0, nyStoryStart=0;
-let skyPhase=0;
+let skyPhase=0,nightBlend=0;
 const dayDuration=48;
 const layers=[canvas,nightCanvas].map(target=>{
   const skyBuffer=document.createElement('canvas');
@@ -1598,6 +1626,7 @@ function draw(){
   const snow=state.season===3 && state.region!=='lv';
   let chapter=null;
   for(const [index,layer] of layers.entries()){
+    if((index===0 && nightBlend===1) || (index===1 && nightBlend===0)) continue;
     ctx=layer.target;
     ctx.setTransform(1,0,0,1,0,0);
     ctx.drawImage(layer.skyBuffer,0,0);
@@ -1625,7 +1654,7 @@ function draw(){
       alaskaMotion(time,index===1);
       smallFish(time,index===1);
     }else{
-      vegasMotion(time,index===1,vegasTime,bonusTime);
+      vegasMotion(time,index===1,vegasTime,bonusTime,-layer.offset/2);
       if(vegasLucky) vegasLuckyCue(1+bonusTime/bonusWarningDuration);
       vegasBonus(bonusTime,-layer.offset/2);
     }
@@ -1706,7 +1735,11 @@ function updateCycle(){
 function setSkyPhase(phase){
   skyPhase=phase%1;
   const height=Math.sin(skyPhase*2*Math.PI);
-  stage.style.setProperty('--light',smooth((.28-height)/.6));
+  const blend=smooth((.28-height)/.6);
+  if(blend!==nightBlend){
+    nightBlend=blend;
+    stage.style.setProperty('--light',nightBlend);
+  }
   const label=skyPhase<.08?'Sunrise':skyPhase<.42?'Daylight':skyPhase<.53?'Sunset':skyPhase<.68?'Moonrise':skyPhase<.92?'Night':'Before dawn';
   if(light.getAttribute('aria-valuetext')!==label) light.setAttribute('aria-valuetext',label);
 }
